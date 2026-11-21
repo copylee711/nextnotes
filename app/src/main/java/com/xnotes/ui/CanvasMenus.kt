@@ -1,5 +1,6 @@
 package com.xnotes.ui
 
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ScrollState
@@ -183,6 +184,7 @@ fun SelectionMenu(
     onSaveAudio: ((com.xnotes.core.model.AudioItem) -> Unit)? = null,
     onShareAudio: ((com.xnotes.core.model.AudioItem) -> Unit)? = null,
     onShareImage: ((java.io.File) -> Unit)? = null,
+    onAskAi: (() -> Unit)? = null, // NextNotes
 ) {
     val rect = host.selectionMenuRect ?: return
     val palette = LocalPalette.current
@@ -220,6 +222,8 @@ fun SelectionMenu(
                 val playing = AudioPlayback.session?.let { it.item === audio && it.playing } == true
                 ActionIcon(if (playing) XnotesIcons.pause else XnotesIcons.play, stringResource(if (playing) R.string.audio_pause else R.string.audio_play)) { host.playSelectedAudio() }
             }
+            // NextNotes: ask the AI about what is selected (the panel captures it on send).
+            onAskAi?.let { ask -> ActionIcon(Icons.Outlined.AutoAwesome, "问 AI") { ask() } }
             if (crops) ActionIcon(XnotesIcons.crop, stringResource(R.string.crop)) { host.startCrop() }
             ActionIcon(XnotesIcons.trash, stringResource(R.string.delete), shortcut = Keys.DELETE) { host.deleteSelection() }
             ActionIcon(XnotesIcons.cut, stringResource(R.string.cut)) { host.cutSelection() }

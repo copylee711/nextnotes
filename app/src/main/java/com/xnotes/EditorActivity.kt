@@ -1592,10 +1592,16 @@ private fun EditorPane(
         }
     }
     // The colour a swatch drag carries rides over the whole pane, toolbar and page alike.
+    // NextNotes: what the AI is shown, from whichever surface is open.
+    val aiCapture: () -> com.nextnotes.ui.ai.AiSnapshot? = {
+        if (editor.canvasOpen) editor.infinite.captureForAi() else editor.captureForAi()
+    }
     Box(modifier) {
+      Row(Modifier.fillMaxSize()) { // NextNotes: the note, then the AI panel beside it
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .weight(1f)
+                .fillMaxHeight()
                 .background(palette.bg.toComposeColor())
                 .then(takeFocus)
                 .focusRequester(focusRequester)
@@ -1643,6 +1649,7 @@ private fun EditorPane(
                             onSaveAudio = { actions.onSaveAudio(editor, it) },
                             onShareAudio = { actions.onShareAudio(editor, it) },
                             onShareImage = actions.onShareImage,
+                            onAskAi = { editor.ai.show(aiCapture) }, // NextNotes
                         )
                         com.xnotes.ui.CropOverlay(canvas)
                         com.xnotes.ui.TextStyleBar(canvas)
@@ -1693,6 +1700,7 @@ private fun EditorPane(
                                 onSaveAudio = { actions.onSaveAudio(editor, it) },
                                 onShareAudio = { actions.onShareAudio(editor, it) },
                                 onShareImage = actions.onShareImage,
+                                onAskAi = { editor.ai.show(aiCapture) }, // NextNotes
                             )
                             com.xnotes.ui.CropOverlay(editor)
                             com.xnotes.ui.ScreenshotMenu(editor, onShare = actions.onShareImage)
@@ -1715,6 +1723,9 @@ private fun EditorPane(
                 com.xnotes.ui.TextFormatBar(editor)
             }
         }
+        if (editor.ai.open) com.nextnotes.ui.ai.AiPanel(editor.ai, aiCapture)
+      }
+        if (!editor.ai.open) com.nextnotes.ui.ai.AiFab(Modifier.align(androidx.compose.ui.Alignment.BottomStart)) { editor.ai.show(aiCapture) }
         com.xnotes.ui.ColorDropOverlay(if (editor.canvasOpen) editor.infinite else editor)
     }
 }

@@ -689,6 +689,14 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         return file
     }
 
+    /** NextNotes: what the AI is shown, the selection when there is one, else what is on screen. */
+    fun captureForAi(): com.nextnotes.ui.ai.AiSnapshot? {
+        renderSelectionBitmap()?.let { return com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.SELECTION) }
+        val view = viewport.visibleContentRect()
+        val items = document.items.filter { it.paintBounds().intersects(view) }.forExport()
+        return renderItemsBitmap(items, view)?.let { com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.VIEW) }
+    }
+
     /**
      * The selected items alone over the canvas's paper and ruling, cut to their bounds, at twice
      * content size with the longest side capped, like the paged Screenshot tool's capture.
@@ -698,6 +706,11 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         val picked = HashSet(selection.items)
         val items = document.items.filter { it in picked }.forExport()
         val bounds = items.map { it.paintBounds() }.reduceOrNull { a, b -> a.union(b) } ?: return null
+        return renderItemsBitmap(items, bounds)
+    }
+
+    /** NextNotes: [items] over the paper and ruling, cut to [bounds] (split out of renderSelectionBitmap). */
+    private fun renderItemsBitmap(items: List<com.xnotes.core.model.CanvasItem>, bounds: com.xnotes.core.geometry.Rect): android.graphics.Bitmap? {
         if (bounds.w <= 0.0 || bounds.h <= 0.0) return null
         val maxDim = 4096.0
         val res = minOf(2.0, maxDim / bounds.w, maxDim / bounds.h).coerceAtLeast(0.05)

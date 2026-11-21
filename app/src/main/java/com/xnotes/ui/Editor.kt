@@ -2014,6 +2014,17 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         return file
     }
 
+    /** NextNotes: what the AI is shown, the selection when there is one, else what is on screen. */
+    fun captureForAi(): com.nextnotes.ui.ai.AiSnapshot? {
+        renderSelectionBitmap()?.let { return com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.SELECTION) }
+        return renderRegionBitmap(state.visibleContentRect())?.let {
+            com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.VIEW)
+        }
+    }
+
+    /** NextNotes: the AI assistant beside this pane. */
+    val ai by lazy { com.nextnotes.ui.ai.AiPaneState(appContext) }
+
     /** The selected items alone over the pages beneath them, cut to their bounds; null with nothing selected. */
     private fun renderSelectionBitmap(): android.graphics.Bitmap? {
         val picked = controller.selectedItems()

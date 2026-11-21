@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NextNotes: the app only connects to AI services the user configured. Self-hosted models (Ollama,
+     llama.cpp, LM Studio on the LAN) usually speak plain HTTP, so cleartext is allowed; the settings
+     screen warns when an http:// address is entered. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

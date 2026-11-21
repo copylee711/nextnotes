@@ -30,6 +30,7 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/nextnotes_data_extraction_rules"
         android:fullBackupContent="@xml/nextnotes_backup_rules"
+        android:networkSecurityConfig="@xml/nextnotes_network_security"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:largeHeap="true"
