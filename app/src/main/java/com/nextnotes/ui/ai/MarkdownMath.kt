@@ -5,6 +5,7 @@ import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -128,6 +130,53 @@ internal val parser: Parser = Parser.builder()
     .extensions(listOf(TablesExtension.create(), StrikethroughExtension.create()))
     .build()
 
+/**
+ * Column widths that fit [avail]: columns narrower than an even share keep their width, and what
+ * is left is shared evenly by the rest, which wrap their words; none goes under [min] or its own
+ * [floor], what it cannot wrap. Widths that
+ * already fit come back as they are.
+ */
+internal fun fitColumns(natural: IntArray, avail: Int, min: Int, floor: IntArray = IntArray(natural.size)): IntArray {
+    if (natural.sum() <= avail || natural.isEmpty()) return natural
+    val out = IntArray(natural.size)
+    val open = natural.indices.toMutableList()
+    var left = avail
+    while (open.isNotEmpty()) {
+        val share = left / open.size
+        val narrow = open.filter { natural[it] <= share }
+        if (narrow.isEmpty()) break
+        for (i in narrow) {
+            out[i] = natural[i]
+            left -= natural[i]
+        }
+        open.removeAll(narrow)
+    }
+    for (i in open) out[i] = maxOf(min, left / open.size)
+    // A column never squeezes past what it cannot wrap, even if the table then runs wide.
+    for (i in out.indices) out[i] = maxOf(out[i], floor[i])
+    return out
+}
+
+/** How tables set: scrolling sideways at their natural width, or squeezed to the panel and wrapped. */
+object TableLook {
+    private const val PREFS = "nextnotes_ai"
+    private const val KEY = "table_fit"
+    var fit by androidx.compose.runtime.mutableStateOf(false)
+        private set
+    private var loaded = false
+
+    fun load(context: android.content.Context) {
+        if (loaded) return
+        loaded = true
+        fit = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).getBoolean(KEY, false)
+    }
+
+    fun set(context: android.content.Context, value: Boolean) {
+        fit = value
+        context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit().putBoolean(KEY, value).apply()
+    }
+}
+
 /** A table's rows in order, each flagged when it is the header, with its cells. */
 internal fun tableRows(table: Node): List<Pair<Boolean, List<TableCell>>> {
     val rows = ArrayList<Pair<Boolean, List<TableCell>>>()
@@ -229,8 +278,15 @@ private fun Table(table: TableBlock, math: MathText, color: Color, dim: Color, c
     val line = dim.copy(alpha = 0.3f)
     val head = codeBg
     val stripe = codeBg.copy(alpha = codeBg.alpha * 0.4f)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    remember { TableLook.load(context) }
+    val fit = TableLook.fit
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    // The panel's width, read before the sideways scroll takes the limit away.
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+    val avail = constraints.maxWidth
     Box(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+        Modifier.horizontalScroll(rememberScrollState())
             .clip(RoundedCornerShape(8.dp)).border(1.dp, line, RoundedCornerShape(8.dp)),
     ) {
         androidx.compose.ui.layout.Layout(
@@ -250,10 +306,18 @@ private fun Table(table: TableBlock, math: MathText, color: Color, dim: Color, c
             },
         ) { measurables, _ ->
             val cap = 220.dp.roundToPx()
-            val widths = IntArray(cols)
+            val natural = IntArray(cols)
+            // What a column cannot go under: its widest word or formula, which does not wrap.
+            val floor = IntArray(cols)
             measurables.forEachIndexed { i, m ->
-                widths[i % cols] = maxOf(widths[i % cols], minOf(cap, m.maxIntrinsicWidth(androidx.compose.ui.unit.Constraints.Infinity)))
+                val inf = androidx.compose.ui.unit.Constraints.Infinity
+                natural[i % cols] = maxOf(natural[i % cols], minOf(cap, m.maxIntrinsicWidth(inf)))
+                floor[i % cols] = maxOf(floor[i % cols], m.minIntrinsicWidth(inf))
             }
+            for (c in 0 until cols) natural[c] = maxOf(natural[c], floor[c])
+            // Fitting, the columns share the panel's width as far as their formulas let them, and
+            // the scroll catches what still sticks out; otherwise each keeps its own width.
+            val widths = if (fit) fitColumns(natural, avail, 48.dp.roundToPx(), floor) else natural
             val heights = IntArray(rows.size)
             measurables.forEachIndexed { i, m ->
                 heights[i / cols] = maxOf(heights[i / cols], m.minIntrinsicHeight(widths[i % cols]))
@@ -273,6 +337,13 @@ private fun Table(table: TableBlock, math: MathText, color: Color, dim: Color, c
                 }
             }
         }
+    }
+    }
+    Text(
+        if (fit) "↔ 改为横向滚动" else "⇥ 适应宽度", color = dim, fontSize = 12.sp,
+        modifier = Modifier.align(androidx.compose.ui.Alignment.End).clip(RoundedCornerShape(6.dp))
+            .clickable { TableLook.set(context, !fit) }.padding(horizontal = 6.dp, vertical = 2.dp),
+    )
     }
 }
 

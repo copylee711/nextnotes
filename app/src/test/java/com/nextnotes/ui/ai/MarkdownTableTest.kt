@@ -17,6 +17,25 @@ class MarkdownTableTest {
         return sb.toString()
     }
 
+    @Test fun columnsThatFitAreLeftAlone() {
+        val natural = intArrayOf(100, 200, 50)
+        assertEquals(natural.toList(), fitColumns(natural, 400, 48).toList())
+    }
+
+    @Test fun narrowColumnsKeepTheirWidthAndWideOnesShareTheRest() {
+        // 600 into 400: the 60 keeps its width, the two wide ones split the 340 left.
+        assertEquals(listOf(60, 170, 170), fitColumns(intArrayOf(60, 220, 320), 400, 48).toList())
+    }
+
+    @Test fun noColumnGoesUnderTheMinimum() {
+        assertEquals(listOf(48, 48, 48), fitColumns(intArrayOf(200, 200, 200), 90, 48).toList())
+    }
+
+    @Test fun aColumnKeepsRoomForWhatItCannotWrap() {
+        // The last column holds a formula 210 wide, so it keeps that even past the 400.
+        assertEquals(listOf(60, 170, 210), fitColumns(intArrayOf(60, 220, 320), 400, 48, intArrayOf(40, 80, 210)).toList())
+    }
+
     @Test fun anAnswersTableIsReadAsRows() {
         // The shape the model gave when checking 2+3=6, with a formula in a cell.
         val answer = "| 步骤 | 内容 | 判断 |\n|---|---|---|\n| 1 | 抄写算式 \$2+3\$ | ✅ |\n| 3 | 写出 \$=6\$ | ❌ 错误 |\n"
