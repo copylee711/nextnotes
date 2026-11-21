@@ -2186,6 +2186,14 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         interaction.zoomLocked = zoomLocked
     }
 
+    /** NextNotes: bumped when a pinch tries to zoom while it is locked, which shows the way to unlock. */
+    var lockedPinch by mutableStateOf(0)
+        private set
+
+    init {
+        interaction.onLockedPinch = { lockedPinch++ }
+    }
+
     /** Adopt the configured zoom range, then pull the current zoom back into it. */
     fun applyZoomRange(minPercent: Int, maxPercent: Int) {
         viewport.minZoom = (minPercent / 100.0).coerceAtLeast(0.0001)

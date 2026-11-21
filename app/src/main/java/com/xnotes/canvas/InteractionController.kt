@@ -335,6 +335,10 @@ class InteractionController(
     // PINCH
     private var pinchInitDist = 1.0
     private var pinchInitZoom = 1.0
+
+    /** NextNotes: a pinch that tries to zoom while the zoom is locked, once a gesture, so the way to unlock can show. */
+    var onLockedPinch: () -> Unit = {}
+    private var lockedPinchTold = false
     private var pinchAnchorContent = Pt.ZERO
 
     // RULER (transient screen-space straightedge; no model/undo state)
@@ -4531,6 +4535,7 @@ class InteractionController(
         val mid = (a + b) * 0.5
         pinchInitDist = a.distanceTo(b).coerceAtLeast(1.0)
         pinchInitZoom = state.zoom
+        lockedPinchTold = false // NextNotes
         pinchAnchorContent = state.viewportToContent(mid)
         startTrackingVelocity(mid.x, mid.y)
     }
@@ -4552,6 +4557,10 @@ class InteractionController(
         // magnet grabs and is dismissed the moment it breaks free. A locked pinch is pan-only,
         // so it never snaps.
         val z = if (state.zoomLocked) pinchInitZoom else state.snapZoomToFit(raw)
+        if (state.zoomLocked && !lockedPinchTold && kotlin.math.abs(dist / pinchInitDist - 1) > 0.15) { // NextNotes
+            lockedPinchTold = true
+            onLockedPinch()
+        }
         // A two-finger pan held at its zoom (locked, or on a fit magnet) keeps prefetching like a one-finger one.
         if (z != pinchInitZoom) state.zoomingInProgress = true
         state.zoom = z

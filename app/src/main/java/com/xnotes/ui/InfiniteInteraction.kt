@@ -324,6 +324,10 @@ class InfiniteInteraction(
     // Pinch.
     private var pinchInitDist = 1.0
     private var pinchInitZoom = 1.0
+
+    /** NextNotes: a pinch that tries to zoom while the zoom is locked, once a gesture, so the way to unlock can show. */
+    var onLockedPinch: () -> Unit = {}
+    private var lockedPinchTold = false
     private var pinchAnchorContent = Pt.ZERO
 
     // The view as this touch went down, put back if Android takes the touch back (see takeBackTouch).
@@ -1960,6 +1964,7 @@ class InfiniteInteraction(
         val mid = (a + b) * 0.5
         pinchInitDist = a.distanceTo(b).coerceAtLeast(1.0)
         pinchInitZoom = viewport.zoom
+        lockedPinchTold = false // NextNotes
         pinchAnchorContent = viewport.viewportToContent(mid)
         startTrackingVelocity(mid.x, mid.y)
     }
@@ -1977,6 +1982,10 @@ class InfiniteInteraction(
         // time: the content under the fingers stays under the fingers whether they spread or slide.
         // A locked zoom keeps the zoom it started at, so the pinch is a pan and nothing else.
         viewport.zoom = if (zoomLocked) pinchInitZoom else pinchInitZoom * (dist / pinchInitDist)
+        if (zoomLocked && !lockedPinchTold && kotlin.math.abs(dist / pinchInitDist - 1) > 0.15) { // NextNotes
+            lockedPinchTold = true
+            onLockedPinch()
+        }
         if (pinchPanAllowed()) {
             viewport.scrollX = pinchAnchorContent.x - mid.x / viewport.zoom
             viewport.scrollY = pinchAnchorContent.y - mid.y / viewport.zoom

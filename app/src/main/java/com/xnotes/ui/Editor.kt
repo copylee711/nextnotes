@@ -728,6 +728,11 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     var treeVersion by mutableStateOf(0)
         private set
 
+    /** NextNotes: files changed by a sync, so the explorer lists again. */
+    fun filesChangedOutside() {
+        treeVersion++
+    }
+
     /** Bumped on every preferences change so open panes refresh (e.g. after an .scm import). */
     var prefsVersion by mutableStateOf(0)
         private set
@@ -7770,6 +7775,10 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
 
     /** Show (or re-arm) the transient "lock zoom" hint after a pinch snaps to fit-to-width. */
     fun showZoomLockHint() { zoomLockHint += 1 }
+
+    init {
+        controller.onLockedPinch = { showZoomLockHint() } // NextNotes: the lock is lifted from the same chip
+    }
 
     /** Dismiss the "lock zoom" hint when a pinch breaks past the fit-to-width magnet. */
     fun hideZoomLockHint() { zoomLockHintDismiss += 1 }

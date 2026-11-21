@@ -1604,6 +1604,11 @@ private fun EditorPane(
         else -> null
     }?.let { com.xnotes.platform.PdfExports.keyOf(it) }
     androidx.compose.runtime.LaunchedEffect(aiNote, editor.title) { editor.ai.bindNote(aiNote) }
+    // NextNotes: sync on its own at home, so no note is open while files change under it.
+    val syncContext = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(editor.noteOpen, editor.browseRoot) {
+        if (!editor.noteOpen) com.nextnotes.sync.SyncCenter.auto(syncContext, editor.browseRoot) { editor.filesChangedOutside() }
+    }
     Box(modifier) {
       // NextNotes: the note, then the AI panel beside it. Opaque, since while the panel slides its
       // slot is empty and would otherwise show Home underneath.
@@ -1666,6 +1671,8 @@ private fun EditorPane(
                         com.xnotes.ui.TextStyleBar(canvas)
                         com.xnotes.ui.LongPressMenu(canvas, onInsertImageAt = { c -> actions.onInsertCanvasImage(editor, c) })
                         com.xnotes.ui.CanvasDebugOverlay(canvas)
+                        // NextNotes: a locked canvas shows how to unlock when a pinch tries to zoom.
+                        ZoomLockHint(canvas.zoomLocked, canvas.lockedPinch, 0, canvas::toggleZoomLock)
                     }
                 }
             } else {
@@ -1727,7 +1734,7 @@ private fun EditorPane(
                             com.xnotes.ui.EmojiMenu(editor)
                             com.xnotes.ui.FlowTableMenu(editor)
                             com.xnotes.ui.TableChrome(editor)
-                            ZoomLockHint(editor)
+                            ZoomLockHint(editor.zoomLocked, editor.zoomLockHint, editor.zoomLockHintDismiss, editor::toggleZoomLock)
                         }
                     }
                 }
@@ -2114,13 +2121,13 @@ private fun PdfBatchExportDialog(p: com.xnotes.platform.PdfBatch.Progress, onCan
  * lingers long enough to tap again.
  */
 @Composable
-private fun BoxScope.ZoomLockHint(editor: Editor) {
+private fun BoxScope.ZoomLockHint(locked: Boolean, show: Int, dismiss: Int, onToggle: () -> Unit) {
     val palette = LocalPalette.current
     var visible by remember { mutableStateOf(false) }
     // Bumped on the initial fit-width snap and on every tap; (re)starts the auto-dismiss timer below.
     var armToken by remember { mutableStateOf(0) }
-    LaunchedEffect(editor.zoomLockHint) {
-        if (editor.zoomLockHint > 0) {
+    LaunchedEffect(show) {
+        if (show > 0) {
             visible = true
             armToken++
         }
@@ -2132,10 +2139,9 @@ private fun BoxScope.ZoomLockHint(editor: Editor) {
         }
     }
     // Breaking past the fit-width magnet dismisses the hint at once.
-    LaunchedEffect(editor.zoomLockHintDismiss) {
-        if (editor.zoomLockHintDismiss > 0) visible = false
+    LaunchedEffect(dismiss) {
+        if (dismiss > 0) visible = false
     }
-    val locked = editor.zoomLocked
     AnimatedVisibility(
         visible = visible,
         modifier = Modifier.align(Alignment.TopCenter).padding(com.xnotes.ui.LocalToolbarCover.current).padding(top = 8.dp),
@@ -2147,7 +2153,7 @@ private fun BoxScope.ZoomLockHint(editor: Editor) {
                 .clip(MaterialTheme.shapes.small)
                 .background(palette.surface.toComposeColor())
                 .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.small)
-                .clickable { editor.toggleZoomLock(); armToken++ }
+                .clickable { onToggle(); armToken++ }
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
