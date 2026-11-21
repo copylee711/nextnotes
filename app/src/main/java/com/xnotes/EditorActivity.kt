@@ -1598,7 +1598,9 @@ private fun EditorPane(
         if (editor.canvasOpen) editor.infinite.captureForAi() else editor.captureForAi()
     }
     Box(modifier) {
-      Row(Modifier.fillMaxSize()) { // NextNotes: the note, then the AI panel beside it
+      // NextNotes: the note, then the AI panel beside it. Opaque, since while the panel slides its
+      // slot is empty and would otherwise show Home underneath.
+      Row(Modifier.fillMaxSize().background(palette.bg.toComposeColor())) {
         Column(
             modifier = Modifier
                 .weight(1f)
