@@ -1737,7 +1737,7 @@ private fun EditorPane(
             }
         })
       }
-        if (!editor.ai.open) com.nextnotes.ui.ai.AiFab(Modifier.align(androidx.compose.ui.Alignment.BottomStart)) { editor.ai.show(aiCapture) }
+        if (!editor.ai.open) com.nextnotes.ui.ai.AiFab(Modifier.align(androidx.compose.ui.Alignment.TopEnd)) { editor.ai.show(aiCapture) }
         com.xnotes.ui.ColorDropOverlay(if (editor.canvasOpen) editor.infinite else editor)
     }
 }
