@@ -39,6 +39,8 @@ class AiTurn(val role: Role, text: String, val snapshot: Bitmap? = null, val sna
     var source: AiSnapshot? = null
     /** How many of the answer's marks went on the page; null until they are put there. */
     var placed by mutableStateOf<Int?>(null)
+    /** [snapshot] as the JPEG kept on disk, once made. */
+    @Volatile var kept: ByteArray? = null
 }
 
 /** Handwriting being turned into text: the picture of it, what came back so far, and how it went. */
@@ -133,6 +135,52 @@ class AiPaneState(context: Context) {
     /** OpenCode Go and similar want one stable id per conversation. */
     private var sessionId = UUID.randomUUID().toString()
 
+    private val sessions = AiSessions(app)
+
+    /** The note whose conversation this is; each note keeps its own. */
+    private var noteKey: String? = null
+
+    /**
+     * Switch to the conversation of the note at [key] (null: no note open). The one shown so far
+     * is kept for its own note first, and the new note's comes back as it was left.
+     */
+    fun bindNote(key: String?) {
+        if (key == noteKey) return
+        stop()
+        persist()
+        turns.clear()
+        sessionId = UUID.randomUUID().toString()
+        noteKey = key
+        if (key == null) return
+        scope.launch {
+            val saved = withContext(Dispatchers.IO) { sessions.load(key) } ?: return@launch
+            if (noteKey != key || turns.isNotEmpty()) return@launch
+            if (saved.sessionId.isNotEmpty()) sessionId = saved.sessionId
+            turns += saved.turns.map { t ->
+                AiTurn(t.role, t.text, t.image?.let { AiSessions.picture(it) }, t.label).apply {
+                    reasoning = t.reasoning
+                    notice = t.notice
+                    kept = t.image
+                }
+            }
+        }
+    }
+
+    /** Write the conversation down for its note, off the main thread. */
+    private fun persist() {
+        val key = noteKey ?: return
+        val id = sessionId
+        val kept = turns.filter { it.error == null && it.text.isNotBlank() }
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                sessions.save(key, SavedSession(id, kept.map { t ->
+                    val image = t.kept ?: t.snapshot?.let { AiSessions.jpeg(it) }?.also { t.kept = it }
+                    SavedTurn(t.role, t.text, t.reasoning, t.snapshotLabel, image, t.notice)
+                }))
+            }
+        }
+    }
+
     fun activeProfile(): AiProfile? {
         @Suppress("UNUSED_EXPRESSION") profilesVersion // read so callers recompose on change
         return profiles.active()
@@ -159,6 +207,7 @@ class AiPaneState(context: Context) {
     fun newConversation() {
         stop()
         turns.clear()
+        noteKey?.let { key -> scope.launch(Dispatchers.IO) { sessions.delete(key) } }
         sessionId = UUID.randomUUID().toString()
     }
 
@@ -233,6 +282,7 @@ class AiPaneState(context: Context) {
                 if (call === thisCall) {
                     busy = false
                     call = null
+                    persist()
                 }
             }
         }

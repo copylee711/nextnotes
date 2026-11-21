@@ -61,6 +61,11 @@ import com.nextnotes.ai.Prompts
 import com.nextnotes.ui.theme.sticker
 import com.nextnotes.ui.theme.stickerButton
 import androidx.compose.ui.draw.drawBehind
+import kotlinx.coroutines.launch
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.layout.height
 import com.nextnotes.ai.Role
 import com.xnotes.ui.theme.LocalPalette
@@ -145,7 +150,7 @@ fun AiPanel(
                 ) {
                     items(state.turns) { turn ->
                         ProvideArtifactScope(ArtifactScope(host, turn.streaming)) {
-                            TurnView(turn, text, dim, surface, border, palette, onMark)
+                            TurnView(turn, text, dim, surface, border, palette, onMark, onInsertImage)
                         }
                     }
                 }
@@ -273,6 +278,7 @@ private fun EmptyHint(state: AiPaneState, dim: Color, accent: Color) {
 private fun TurnView(
     turn: AiTurn, text: Color, dim: Color, surface: Color, border: Color, palette: com.xnotes.ui.theme.Palette,
     onMark: (AiSnapshot, List<com.nextnotes.ai.Mark>) -> Int,
+    onInsertImage: (ByteArray) -> Unit,
 ) {
     val chrome = com.nextnotes.ui.theme.LocalChrome.current
     if (turn.role == Role.USER) {
@@ -305,8 +311,14 @@ private fun TurnView(
         }
         // The marks block is for the page, not for reading.
         val (shown, marks) = remember(turn.text) { com.nextnotes.ai.Marks.split(turn.text) }
+        // The answer as drawn, kept so it can go into the note as a picture, formulas and all.
+        val layer = androidx.compose.ui.graphics.rememberGraphicsLayer()
+        val paper = palette.panel.toComposeColor()
         if (turn.text.isNotEmpty()) {
-            MarkdownMath(shown, text, dim, surface, palette.text)
+            Box(Modifier.drawWithContent {
+                layer.record { drawRect(paper); this@drawWithContent.drawContent() }
+                drawLayer(layer)
+            }) { MarkdownMath(shown, text, dim, surface, palette.text) }
         } else if (turn.streaming) {
             Text(if (turn.reasoning.isNotBlank()) "思考中…" else "正在读取笔记…", color = dim, fontSize = 14.sp)
         }
@@ -320,6 +332,16 @@ private fun TurnView(
             val clipboard = LocalClipboardManager.current
             Row(Modifier.padding(top = 2.dp)) {
                 HeaderButton(Icons.Outlined.ContentCopy, "复制", dim) { clipboard.setText(AnnotatedString(turn.text)) }
+                val scope = androidx.compose.runtime.rememberCoroutineScope()
+                HeaderButton(Icons.Outlined.AddPhotoAlternate, "插入到笔记", dim) {
+                    scope.launch {
+                        val shot = layer.toImageBitmap().asAndroidBitmap().copy(android.graphics.Bitmap.Config.ARGB_8888, false)
+                        val bytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                            java.io.ByteArrayOutputStream().also { shot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+                        }
+                        onInsertImage(bytes)
+                    }
+                }
             }
         }
     }

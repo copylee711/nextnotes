@@ -1597,6 +1597,13 @@ private fun EditorPane(
     val aiCapture: () -> com.nextnotes.ui.ai.AiSnapshot? = {
         if (editor.canvasOpen) editor.infinite.captureForAi() else editor.captureForAi()
     }
+    // NextNotes: each note keeps its own conversation with the assistant.
+    val aiNote = when {
+        editor.canvasOpen -> editor.infinite.document.path
+        editor.noteOpen -> editor.currentUri
+        else -> null
+    }?.let { com.xnotes.platform.PdfExports.keyOf(it) }
+    androidx.compose.runtime.LaunchedEffect(aiNote, editor.title) { editor.ai.bindNote(aiNote) }
     Box(modifier) {
       // NextNotes: the note, then the AI panel beside it. Opaque, since while the panel slides its
       // slot is empty and would otherwise show Home underneath.
