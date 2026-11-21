@@ -122,7 +122,7 @@ private fun ProfileEditor(state: AiPaneState, initial: AiProfile?, onDone: () ->
     var baseUrl by remember { mutableStateOf(initial?.baseUrl ?: "") }
     var model by remember { mutableStateOf(initial?.model ?: "") }
     var opencode by remember { mutableStateOf(initial?.opencodeSession ?: false) }
-    var maxTokens by remember { mutableStateOf((initial?.maxTokens ?: 32000).toString()) }
+    var maxTokens by remember { mutableStateOf(initial?.maxTokens?.takeIf { it > 0 }?.toString() ?: "") }
     // An existing key is never shown back; leaving the field empty keeps it.
     var key by remember { mutableStateOf("") }
     var showKey by remember { mutableStateOf(false) }
@@ -137,7 +137,7 @@ private fun ProfileEditor(state: AiPaneState, initial: AiProfile?, onDone: () ->
         baseUrl = baseUrl.trim(),
         model = model.trim(),
         opencodeSession = opencode,
-        maxTokens = maxTokens.toIntOrNull()?.coerceIn(256, 64000) ?: 32000,
+        maxTokens = maxTokens.toIntOrNull()?.takeIf { it > 0 }?.coerceIn(256, 200000) ?: 0,
     )
 
     AlertDialog(
@@ -193,7 +193,7 @@ private fun ProfileEditor(state: AiPaneState, initial: AiProfile?, onDone: () ->
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
-                    maxTokens, { maxTokens = it.filter(Char::isDigit) }, label = { Text("最大输出 tokens") }, singleLine = true,
+                    maxTokens, { maxTokens = it.filter(Char::isDigit) }, label = { Text("最大输出 tokens") }, placeholder = { Text("留空：用模型的默认值") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { opencode = !opencode }) {

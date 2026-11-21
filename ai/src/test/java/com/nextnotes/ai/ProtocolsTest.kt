@@ -96,6 +96,20 @@ class ProtocolsTest {
         assertEquals(list, ProfileStore.decode(ProfileStore.encode(list)))
     }
 
+    @Test fun withoutALimitTheModelsOwnApplies() {
+        assertFalse(OpenAiProtocol.body(openai, "", listOf(question), stream = true).has("max_tokens"))
+        assertEquals(2000, OpenAiProtocol.body(openai.copy(maxTokens = 2000), "", listOf(question), stream = true).getInt("max_tokens"))
+        // Anthropic insists on one.
+        assertEquals(AiProfile.ANTHROPIC_FALLBACK, AnthropicProtocol.body(claude, "", listOf(question), stream = true).getInt("max_tokens"))
+    }
+
+    @Test fun theOldDefaultLimitsGiveWay() {
+        for (old in listOf(4096, 32000)) {
+            val saved = ProfileStore.encode(listOf(openai.copy(maxTokens = old)))
+            assertEquals(0, ProfileStore.decode(saved).single().maxTokens)
+        }
+    }
+
     @Test fun runningOutOfTokensIsNoticedOnBothWires() {
         val o = StreamState()
         OpenAiProtocol.onEvent(null, """{"choices":[{"delta":{"reasoning_content":"想"},"finish_reason":null}]}""", o)

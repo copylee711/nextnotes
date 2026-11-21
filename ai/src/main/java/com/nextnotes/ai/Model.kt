@@ -25,8 +25,14 @@ data class AiProfile(
     val model: String,
     /** Send a stable `x-opencode-session` header per conversation, which OpenCode Go requires. */
     val opencodeSession: Boolean = false,
-    val maxTokens: Int = 32000,
-)
+    /** The most an answer may run to; 0 leaves it to the model's own limit. */
+    val maxTokens: Int = 0,
+) {
+    companion object {
+        /** Anthropic's API will not go without a limit; this one is under every current model's ceiling. */
+        const val ANTHROPIC_FALLBACK = 32000
+    }
+}
 
 /** Starting points for the profile editor. */
 data class AiPreset(

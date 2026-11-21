@@ -265,9 +265,9 @@ class AiPaneState(context: Context) {
                     when {
                         thisCall.cancelled -> {}
                         final.answer.isBlank() && final.truncated -> answer.error =
-                            "模型还没开始回答就用完了输出上限（${profile.maxTokens} tokens，思考过程也算在内）。请在 AI 设置里调大“最大输出 tokens”。"
+                            "模型还没开始回答就用完了输出上限（${limitText(profile)}，思考过程也算在内）。" + raiseHint(profile)
                         final.answer.isBlank() -> answer.error = "模型没有返回内容"
-                        final.truncated -> answer.notice = "回答达到输出上限（${profile.maxTokens} tokens），后面被截断了。可以在 AI 设置里调大“最大输出 tokens”。"
+                        final.truncated -> answer.notice = "回答达到输出上限（${limitText(profile)}），后面被截断了。" + raiseHint(profile)
                     }
                 }
             } catch (_: AiCancelled) {
@@ -299,6 +299,11 @@ class AiPaneState(context: Context) {
             "连接失败：${e.message ?: e.javaClass.simpleName}"
         }
     }
+
+    private fun limitText(p: AiProfile) = if (p.maxTokens > 0) "${p.maxTokens} tokens" else "模型的默认值"
+
+    private fun raiseHint(p: AiProfile) =
+        if (p.maxTokens > 0) "可以在 AI 设置里调大“最大输出 tokens”，或留空用模型的默认值。" else "可以在 AI 设置里填一个更大的“最大输出 tokens”。"
 
     private companion object {
         fun versionName(context: Context): String = runCatching {

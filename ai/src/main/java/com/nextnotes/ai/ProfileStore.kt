@@ -67,7 +67,8 @@ class ProfileStore(context: Context) {
                     baseUrl = o.optString("baseUrl"),
                     model = o.optString("model"),
                     opencodeSession = o.optBoolean("opencodeSession", false),
-                    maxTokens = o.optInt("maxTokens", 4096),
+                    // 4096 and 32000 were the old defaults, not choices: they give way to the model's own.
+                    maxTokens = o.optInt("maxTokens", 0).takeUnless { it == 4096 || it == 32000 } ?: 0,
                 )
             }
         }

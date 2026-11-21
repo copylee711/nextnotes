@@ -93,8 +93,8 @@ object OpenAiProtocol : WireProtocol {
         return JSONObject()
             .put("model", profile.model)
             .put("messages", list)
-            .put("max_tokens", profile.maxTokens)
             .put("stream", stream)
+            .apply { if (profile.maxTokens > 0) put("max_tokens", profile.maxTokens) }
     }
 
     override fun onEvent(event: String?, data: String, state: StreamState) {
@@ -156,7 +156,7 @@ object AnthropicProtocol : WireProtocol {
         }
         val body = JSONObject()
             .put("model", profile.model)
-            .put("max_tokens", profile.maxTokens)
+            .put("max_tokens", profile.maxTokens.takeIf { it > 0 } ?: AiProfile.ANTHROPIC_FALLBACK)
             .put("messages", list)
             .put("stream", stream)
         if (system.isNotBlank()) body.put("system", system)
