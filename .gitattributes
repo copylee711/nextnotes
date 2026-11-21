@@ -1,0 +1,4 @@
+# NextNotes: keep LF in the working tree on Windows too (some upstream tests read files byte for byte).
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
