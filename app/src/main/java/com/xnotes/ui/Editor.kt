@@ -601,10 +601,10 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     private var swatchesDark = true
     var toolbarColorCount by mutableStateOf(5)
         private set
-    var toolbarLayout by mutableStateOf(ToolbarLayout.DEFAULT)
+    var toolbarLayout by mutableStateOf(com.nextnotes.tools.NnToolbars.NOTE)
 
     /** The infinite canvas's own bar. Its own layout: the two surfaces hold different items. */
-    var canvasToolbarLayout by mutableStateOf(ToolbarLayout.CANVAS_DEFAULT)
+    var canvasToolbarLayout by mutableStateOf(com.nextnotes.tools.NnToolbars.CANVAS)
         private set
     var renderScale by mutableStateOf(1.0)
         private set

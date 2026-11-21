@@ -1252,7 +1252,7 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
     var toolbarColorCount by mutableStateOf(5)
 
     /** How this bar is arranged, handed over by the host, which owns the settings file. */
-    var toolbarLayout by mutableStateOf(com.xnotes.core.tools.ToolbarLayout.CANVAS_DEFAULT)
+    var toolbarLayout by mutableStateOf(com.nextnotes.tools.NnToolbars.CANVAS)
 
     /** Fired when a tool's style changed here, so the host can persist it. */
     var onToolStyleChanged: (() -> Unit)? = null

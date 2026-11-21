@@ -388,7 +388,8 @@ class SettingsTest {
     }
 
     @Test fun toolbarLayoutDefaultsWhenAbsent() {
-        assertEquals(ToolbarLayout.DEFAULT, Settings.fromJson(JSONObject()).toolbarLayout)
+        // NextNotes: absent means our short pen tray.
+        assertEquals(com.nextnotes.tools.NnToolbars.NOTE, Settings.fromJson(JSONObject()).toolbarLayout)
     }
 
     @Test fun toolbarLayoutRoundTrips() {

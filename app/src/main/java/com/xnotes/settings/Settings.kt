@@ -53,9 +53,9 @@ data class Settings(
     val toolbarColorsDark: List<Rgba> = InkPalette.dark,
     val toolbarColorsLight: List<Rgba> = InkPalette.light,
     val toolbarColorCount: Int = 5,
-    val toolbarLayout: ToolbarLayout = ToolbarLayout.DEFAULT,
+    val toolbarLayout: ToolbarLayout = com.nextnotes.tools.NnToolbars.NOTE, // NextNotes: a short pen tray
     /** The infinite canvas's own bar. A separate layout because the two hold different items. */
-    val canvasToolbarLayout: ToolbarLayout = ToolbarLayout.CANVAS_DEFAULT,
+    val canvasToolbarLayout: ToolbarLayout = com.nextnotes.tools.NnToolbars.CANVAS,
     val activeColor: Int = 0,
     /** The tool armed when the app was last paused, re-armed on the next launch. */
     val lastTool: Tool = Tool.DEFAULT,
@@ -173,12 +173,13 @@ data class Settings(
                 toolbarColorsDark = darkColors,
                 toolbarColorsLight = lightColors,
                 toolbarColorCount = o.optInt("toolbar_color_count", 5).coerceIn(1, InkPalette.MAX_SWATCHES),
-                toolbarLayout = toolbarLayout(o.optJSONObject("toolbar_layout")),
-                canvasToolbarLayout = toolbarLayout(
+                // NextNotes: bars still on xnotes' defaults move to the short pen tray.
+                toolbarLayout = com.nextnotes.tools.NnToolbars.note(toolbarLayout(o.optJSONObject("toolbar_layout"))),
+                canvasToolbarLayout = com.nextnotes.tools.NnToolbars.canvas(toolbarLayout(
                     o.optJSONObject("canvas_toolbar_layout"),
                     ToolbarLayout.CANVAS_ITEMS,
                     ToolbarLayout.CANVAS_DEFAULT,
-                ),
+                )),
                 activeColor = o.optInt("active_color", 0).coerceIn(0, InkPalette.MAX_SWATCHES - 1),
                 // Only tools the toolbar can arm come back; a transient one (e.g. TEXT_BOX) would
                 // leave the bar showing a tool the user never picked.
