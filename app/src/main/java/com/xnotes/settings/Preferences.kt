@@ -44,6 +44,8 @@ data class Preferences(
     val penButtonTool: String = "eraser",
     /** Whether the side-button tool also activates during hover (no contact needed); eraser/pan only. */
     val penButtonHover: Boolean = false,
+    /** NextNotes: holding the pen tip still on the screen switches that contact to the eraser. */
+    val penHoldEraser: Boolean = true,
     /** Action mapped to a clean two-finger tap; "none" (default) disables it. */
     val twoFingerTap: String = "none",
     /** Action mapped to a clean three-finger tap; "none" (default) disables it. */
@@ -143,6 +145,7 @@ data class Preferences(
         .put("detect_shapes", detectShapes)
         .put("pen_button_tool", penButtonTool)
         .put("pen_button_hover", penButtonHover)
+        .put("pen_hold_eraser", penHoldEraser)
         .put("two_finger_tap", twoFingerTap)
         .put("three_finger_tap", threeFingerTap)
         .put("stylus_double_tap", stylusDoubleTap)
@@ -283,6 +286,7 @@ data class Preferences(
                 detectShapes = o.optBoolean("detect_shapes", true),
                 penButtonTool = o.optString("pen_button_tool", "eraser").ifEmpty { "eraser" },
                 penButtonHover = o.optBoolean("pen_button_hover", false),
+                penHoldEraser = o.optBoolean("pen_hold_eraser", true),
                 twoFingerTap = tapAction("two_finger_tap"),
                 threeFingerTap = tapAction("three_finger_tap"),
                 stylusDoubleTap = tapAction("stylus_double_tap"),

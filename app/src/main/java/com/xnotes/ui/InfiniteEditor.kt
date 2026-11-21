@@ -2123,6 +2123,11 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         this.detectShapes = detectShapes
     }
 
+    /** NextNotes: whether a pen tip held still borrows the eraser. */
+    fun setPenHoldEraser(on: Boolean) {
+        interaction.penHold.enabled = on
+    }
+
     fun toggleZoomLock() {
         zoomLocked = !zoomLocked
         interaction.zoomLocked = zoomLocked

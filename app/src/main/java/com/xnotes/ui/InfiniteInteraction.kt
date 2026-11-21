@@ -9,6 +9,7 @@ import com.xnotes.canvas.HandleId
 import com.xnotes.canvas.InteractionController
 import com.xnotes.canvas.ResizeMath
 import com.xnotes.canvas.SelectionMath
+import com.xnotes.canvas.PenHoldEraser
 import com.xnotes.canvas.StylusButtonLatch
 import com.xnotes.core.geometry.Affine
 import com.xnotes.core.geometry.Pt
@@ -284,6 +285,16 @@ class InfiniteInteraction(
 
     // Hold-still-to-snap: a freehand stroke that stops moving becomes the shape it looks like.
     private val handler = Handler(Looper.getMainLooper())
+
+    /** NextNotes: a pen tip held still swaps the dot it started for the eraser. */
+    val penHold = PenHoldEraser(handler) { at ->
+        if (mode != CanvasPointerMode.DRAW) return@PenHoldEraser
+        cancelDwell()
+        dwellEligible = false
+        abandonStroke()
+        beginErase(at.x, at.y)
+        requestRender()
+    }
     private var dwellRunnable: Runnable? = null
     private var dwellEligible = false
     private var dwellAnchor = Pt.ZERO
@@ -332,6 +343,7 @@ class InfiniteInteraction(
                 tapDownTime = e.eventTime
                 tapDownSelected = selection()?.items?.toHashSet() ?: emptySet()
                 handleDown(e)
+                if (drawingIsStylus && mode == CanvasPointerMode.DRAW) penHold.arm(tapDownAt) else penHold.end()
                 downScroll = Pt(viewport.scrollX, viewport.scrollY)
                 downZoom = viewport.zoom
             }
@@ -341,6 +353,7 @@ class InfiniteInteraction(
             }
             MotionEvent.ACTION_MOVE -> {
                 if (tapCandidate && Pt(e.x.toDouble(), e.y.toDouble()).distanceTo(tapDownAt) > TAP_SLOP_PX) tapCandidate = false
+                penHold.onMove(Pt(e.x.toDouble(), e.y.toDouble()))
                 handleMove(e)
             }
             MotionEvent.ACTION_POINTER_UP ->
@@ -351,10 +364,11 @@ class InfiniteInteraction(
                     handlePointerUp(e)
                 }
             MotionEvent.ACTION_UP -> {
+                penHold.end()
                 handleUp(e)
                 tapUp(e)
             }
-            MotionEvent.ACTION_CANCEL -> takeBackTouch()
+            MotionEvent.ACTION_CANCEL -> { penHold.end(); takeBackTouch() }
         }
         return true
     }
@@ -447,6 +461,7 @@ class InfiniteInteraction(
     fun resetGestureState() {
         stopFling()
         cancelLongPress()
+        penHold.end()
         longPressPrevTool = null
         mode = CanvasPointerMode.IDLE
         dismissPressAt = null

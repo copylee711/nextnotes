@@ -494,6 +494,20 @@ class InteractionController(
 
     // LONG-PRESS GRAB
     private val handler by lazy { Handler(Looper.getMainLooper()) } // lazy: see [choreographer]
+
+    /** NextNotes: a pen tip held still swaps the dot it started for the eraser. */
+    val penHold by lazy {
+        PenHoldEraser(handler) { at ->
+            if (mode != PointerMode.DRAW) return@PenHoldEraser
+            cancelDwell()
+            dwellEligible = false
+            liveStroke = null
+            strokePageIndex = null
+            erasingWithFinger = false
+            beginErase(at.x, at.y)
+            requestRender()
+        }
+    }
     private var longPressRunnable: Runnable? = null
     private var longPressStart = Pt.ZERO
     private var longPressContent = Pt.ZERO
@@ -653,6 +667,7 @@ class InteractionController(
                 touchTakenBack = false
                 tapDown(e)
                 handleDown(e)
+                if (drawingIsStylus && mode == PointerMode.DRAW) penHold.arm(tapDownViewport) else penHold.end()
                 downView = state.snapshotView()
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
@@ -661,6 +676,7 @@ class InteractionController(
             }
             MotionEvent.ACTION_MOVE -> {
                 if (tapCandidate && Pt(e.x.toDouble(), e.y.toDouble()).distanceTo(tapDownViewport) > TAP_SLOP) tapCandidate = false
+                penHold.onMove(Pt(e.x.toDouble(), e.y.toDouble()))
                 handleMove(e)
             }
             MotionEvent.ACTION_POINTER_UP ->
@@ -671,10 +687,11 @@ class InteractionController(
                     handlePointerUp(e)
                 }
             MotionEvent.ACTION_UP -> {
+                penHold.end()
                 handleUp(e)
                 tapUp(e)
             }
-            MotionEvent.ACTION_CANCEL -> takeBackTouch()
+            MotionEvent.ACTION_CANCEL -> { penHold.end(); takeBackTouch() }
         }
         return true
     }
@@ -4599,6 +4616,7 @@ class InteractionController(
 
     private fun abortGesture() {
         cancelLongPress()
+        penHold.end()
         cancelDwell()
         dwellEligible = false
         snappedSelectionPendingMenu = false

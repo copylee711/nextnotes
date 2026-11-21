@@ -270,6 +270,7 @@ fun PreferencesPane(
                 Chip(stringResource(R.string.pan_none), prefs.zoomLockPan == "none") { update(prefs.copy(zoomLockPan = "none")) }
             }
             CheckRow(stringResource(R.string.pref_detect_shapes), prefs.detectShapes) { update(prefs.copy(detectShapes = it)) }
+            CheckRow(stringResource(R.string.pref_pen_hold_eraser), prefs.penHoldEraser) { update(prefs.copy(penHoldEraser = it)) }
             FieldLabel(stringResource(R.string.pref_pen_button_hold))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

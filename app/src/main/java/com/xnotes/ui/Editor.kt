@@ -850,6 +850,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         canvas.replaceDocument(doc)
         canvas.applyPalette(palette)
         canvas.applyInputPrefs(settings.prefs.fingerDraws, controller.penButtonTool, settings.prefs.zoomLockPan, settings.prefs.detectShapes)
+        canvas.setPenHoldEraser(settings.prefs.penHoldEraser)
         canvas.applyZoomRange(settings.prefs.canvasMinZoomPercent, settings.prefs.canvasMaxZoomPercent)
         canvas.onContentChanged = { scheduleCanvasAutosave() }
         // Only a canvas living under the granted folder autosaves; anything else is left alone,
@@ -2841,6 +2842,8 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         flowText.highlight = { toolbarInk() }
         controller.penButtonTool = if (p.penButtonTool == "none") null else (Tool.fromId(p.penButtonTool) ?: Tool.ERASER)
         controller.penButtonHover = p.penButtonHover
+        controller.penHold.enabled = p.penHoldEraser
+        infiniteOrNull?.setPenHoldEraser(p.penHoldEraser)
         state.sideMargin = p.sideMargin
         state.pageBorders = !p.hidePageBorders
         state.maxCachePx = p.maxCacheResolution.toDouble()
