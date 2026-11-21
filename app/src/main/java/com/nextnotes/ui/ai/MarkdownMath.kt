@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,6 +66,12 @@ import org.commonmark.node.SoftLineBreak
 import org.commonmark.node.StrongEmphasis
 import org.commonmark.node.ThematicBreak
 import org.commonmark.parser.Parser
+import org.commonmark.ext.gfm.strikethrough.Strikethrough
+import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension
+import org.commonmark.ext.gfm.tables.TableBlock
+import org.commonmark.ext.gfm.tables.TableCell
+import org.commonmark.ext.gfm.tables.TableHead
+import org.commonmark.ext.gfm.tables.TablesExtension
 
 /** Markdown with LaTeX maths pulled out first, so `_` and `*` inside a formula stay maths. */
 internal class MathText(val markdown: String, val formulas: List<String>) {
@@ -115,12 +123,38 @@ private object FormulaCache {
     }
 }
 
+/** GitHub's tables and strikethrough, which models use freely, on top of CommonMark. */
+internal val parser: Parser = Parser.builder()
+    .extensions(listOf(TablesExtension.create(), StrikethroughExtension.create()))
+    .build()
+
+/** A table's rows in order, each flagged when it is the header, with its cells. */
+internal fun tableRows(table: Node): List<Pair<Boolean, List<TableCell>>> {
+    val rows = ArrayList<Pair<Boolean, List<TableCell>>>()
+    var section = table.firstChild
+    while (section != null) {
+        var row = section.firstChild
+        while (row != null) {
+            val cells = ArrayList<TableCell>()
+            var cell = row.firstChild
+            while (cell != null) {
+                if (cell is TableCell) cells += cell
+                cell = cell.next
+            }
+            rows += (section is TableHead) to cells
+            row = row.next
+        }
+        section = section.next
+    }
+    return rows
+}
+
 /** An AI answer: Markdown blocks with inline and display maths. */
 @Composable
 fun MarkdownMath(source: String, color: Color, dim: Color, codeBg: Color, ink: Rgba, modifier: Modifier = Modifier) {
     val parsed = remember(source) {
         val math = MathText.of(source)
-        math to Parser.builder().build().parse(math.markdown)
+        math to parser.parse(math.markdown)
     }
     val (math, doc) = parsed
     SelectionContainer(modifier) {
@@ -179,7 +213,66 @@ private fun Block(node: Node, math: MathText, color: Color, dim: Color, codeBg: 
             }
         }
         is ThematicBreak -> HorizontalDivider(color = dim.copy(alpha = 0.4f))
+        is TableBlock -> Table(node, math, color, dim, codeBg, ink)
         else -> Blocks(node, math, color, dim, codeBg, ink)
+    }
+}
+
+/**
+ * A table with its columns lined up: each as wide as its widest cell up to a cap, past which the
+ * words wrap, and the whole table scrolling sideways when it is still wider than the panel.
+ */
+@Composable
+private fun Table(table: TableBlock, math: MathText, color: Color, dim: Color, codeBg: Color, ink: Rgba) {
+    val rows = remember(table) { tableRows(table) }
+    val cols = rows.maxOfOrNull { it.second.size } ?: return
+    val line = dim.copy(alpha = 0.3f)
+    val head = codeBg
+    val stripe = codeBg.copy(alpha = codeBg.alpha * 0.4f)
+    Box(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+            .clip(RoundedCornerShape(8.dp)).border(1.dp, line, RoundedCornerShape(8.dp)),
+    ) {
+        androidx.compose.ui.layout.Layout(
+            content = {
+                rows.forEachIndexed { r, (header, cells) ->
+                    for (c in 0 until cols) {
+                        val bg = when {
+                            header -> head
+                            r % 2 == 0 -> stripe
+                            else -> Color.Transparent
+                        }
+                        Box(Modifier.background(bg).border(0.5.dp, line).padding(horizontal = 10.dp, vertical = 6.dp)) {
+                            cells.getOrNull(c)?.let { InlineText(it, math, color, codeBg, ink, 14.sp, bold = header) }
+                        }
+                    }
+                }
+            },
+        ) { measurables, _ ->
+            val cap = 220.dp.roundToPx()
+            val widths = IntArray(cols)
+            measurables.forEachIndexed { i, m ->
+                widths[i % cols] = maxOf(widths[i % cols], minOf(cap, m.maxIntrinsicWidth(androidx.compose.ui.unit.Constraints.Infinity)))
+            }
+            val heights = IntArray(rows.size)
+            measurables.forEachIndexed { i, m ->
+                heights[i / cols] = maxOf(heights[i / cols], m.minIntrinsicHeight(widths[i % cols]))
+            }
+            val placeables = measurables.mapIndexed { i, m ->
+                m.measure(androidx.compose.ui.unit.Constraints.fixed(widths[i % cols], heights[i / cols]))
+            }
+            layout(widths.sum(), heights.sum()) {
+                var y = 0
+                for (r in rows.indices) {
+                    var x = 0
+                    for (c in 0 until cols) {
+                        placeables[r * cols + c].place(x, y)
+                        x += widths[c]
+                    }
+                    y += heights[r]
+                }
+            }
+        }
     }
 }
 
@@ -257,6 +350,7 @@ private fun AnnotatedString.Builder.appendInlines(parent: Node, codeBg: Color) {
             is StrongEmphasis -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { appendInlines(n, codeBg) }
             is Emphasis -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { appendInlines(n, codeBg) }
             is Link -> withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) { appendInlines(n, codeBg) }
+            is Strikethrough -> withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) { appendInlines(n, codeBg) }
             else -> appendInlines(n, codeBg)
         }
         n = n.next
