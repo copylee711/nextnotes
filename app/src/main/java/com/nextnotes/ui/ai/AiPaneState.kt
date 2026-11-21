@@ -41,6 +41,14 @@ class AiTurn(val role: Role, text: String, val snapshot: Bitmap? = null, val sna
     var placed by mutableStateOf<Int?>(null)
 }
 
+/** Handwriting being turned into text: the picture of it, what came back so far, and how it went. */
+@Stable
+class Transcript(val shot: AiSnapshot) {
+    var text by mutableStateOf("")
+    var busy by mutableStateOf(true)
+    var error by mutableStateOf<String?>(null)
+}
+
 /** Whether a question takes a picture of the note along. */
 enum class Attach(val label: String) { AUTO("附带笔记"), NONE("不附带") }
 
@@ -74,6 +82,53 @@ class AiPaneState(context: Context) {
 
     private var job: Job? = null
     private var call: AiCall? = null
+
+    /** The handwriting being turned into text, while its dialog is up. */
+    var transcript by mutableStateOf<Transcript?>(null)
+        private set
+    private var transcribeCall: AiCall? = null
+
+    /** Read the handwriting in [shot] with the active model, filling [transcript] as it streams. */
+    fun transcribe(shot: AiSnapshot?) {
+        if (shot == null) return
+        val profile = profiles.active()
+        if (profile == null) {
+            open = true
+            settingsOpen = true
+            return
+        }
+        transcribeCall?.cancel()
+        val t = Transcript(shot).also { transcript = it }
+        val thisCall = AiCall().also { transcribeCall = it }
+        scope.launch {
+            try {
+                val image = withContext(Dispatchers.Default) { shot.toPart() }
+                val key = keys.get(profile.id)
+                val final = withContext(Dispatchers.IO) {
+                    client.stream(profile, key, "", listOf(ChatMessage.user(Prompts.transcribe, image)), UUID.randomUUID().toString(), thisCall) { d ->
+                        scope.launch { if (transcript === t) t.text = d.answer.trim() }
+                    }
+                }
+                t.text = final.answer.trim()
+                if (t.text.isBlank() && !thisCall.cancelled) t.error = "没有认出文字"
+            } catch (_: AiCancelled) {
+            } catch (e: AiException) {
+                t.error = e.message
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                t.error = e.message ?: e.javaClass.simpleName
+            } finally {
+                t.busy = false
+            }
+        }
+    }
+
+    fun closeTranscript() {
+        transcribeCall?.cancel()
+        transcribeCall = null
+        transcript = null
+    }
 
     /** OpenCode Go and similar want one stable id per conversation. */
     private var sessionId = UUID.randomUUID().toString()

@@ -2020,7 +2020,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     /** NextNotes: what the AI is shown, the selection when there is one, else what is on screen. */
     fun captureForAi(): com.nextnotes.ui.ai.AiSnapshot? {
         val picked = controller.selectedItems()
-        selectionContentBounds(picked)?.let { box ->
+        selectionContentBounds(picked)?.let { com.nextnotes.ui.ai.AiSnapshot.around(it) }?.let { box ->
             renderRegionBitmap(box, HashSet(picked))?.let {
                 return com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.SELECTION, box, state.document)
             }
@@ -2060,6 +2060,33 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
         refreshContent()
         view.requestRender()
         return placed
+    }
+
+    /**
+     * NextNotes: put handwriting's [text] on the page under [shot] as a text box: in place of the
+     * ink when [replace] and the same ink is still selected, else just under it. False when the
+     * note the picture came from is no longer the one open.
+     */
+    fun placeAiText(shot: com.nextnotes.ui.ai.AiSnapshot, text: String, replace: Boolean): Boolean {
+        val region = shot.region ?: return false
+        if (shot.source !== state.document || text.isBlank()) return false
+        val index = state.pageIndexAtContent(region.center) ?: return false
+        val page = state.document.pages[index]
+        val pr = state.pageRects.getOrNull(index) ?: return false
+        val cover = state.footprint(page)
+        // Lined up with the ink itself, not the margin round its picture, while it is still selected.
+        val ink = selectionContentBounds(controller.selectedItems())?.takeIf { com.nextnotes.ui.ai.AiSnapshot.around(it) == region }
+        val inPlace = replace && ink != null
+        if (inPlace) controller.deleteSelection()
+        val local = (ink ?: region).translate(cover.left - pr.left, cover.top - pr.top)
+        val item = com.nextnotes.ui.ai.AiText.box(local, text, inPlace, cover, state.palette.text, textMeasurer)
+        page.items.add(item)
+        state.appendToCache(page, item)
+        history.push(AddItem(page, item))
+        state.document.dirty = true
+        refreshContent()
+        view.requestRender()
+        return true
     }
 
     /** NextNotes: the content rectangle [picked] covers, split out of renderSelectionBitmap. */

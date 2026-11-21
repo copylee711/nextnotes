@@ -79,6 +79,7 @@ fun AiSettingsDialog(state: AiPaneState, onClose: () -> Unit) {
         onDismissRequest = onClose,
         title = { Text("AI 服务") },
         text = {
+            com.nextnotes.ui.KeepBarsHidden()
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 for (p in list) {
                     Row(
@@ -143,6 +144,7 @@ private fun ProfileEditor(state: AiPaneState, initial: AiProfile?, onDone: () ->
         onDismissRequest = onDone,
         title = { Text(if (initial == null) "新增 AI 服务" else "编辑 AI 服务") },
         text = {
+            com.nextnotes.ui.KeepBarsHidden()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("从预设填写", fontSize = 12.sp, color = palette.textDim.toComposeColor())
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

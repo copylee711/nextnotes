@@ -153,6 +153,7 @@ fun ArtifactCard(artifact: Artifact) {
 
     if (fullScreen) {
         Dialog(onDismissRequest = { fullScreen = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            com.nextnotes.ui.KeepBarsHidden()
             var full by remember { mutableStateOf<WebView?>(null) }
             var fullShown by remember { mutableStateOf<android.graphics.Rect?>(null) }
             Column(Modifier.fillMaxSize().background(palette.panel.toComposeColor())) {

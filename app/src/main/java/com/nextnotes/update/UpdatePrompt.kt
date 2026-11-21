@@ -49,6 +49,7 @@ fun UpdatePrompt() {
         containerColor = palette.panel.toComposeColor(),
         title = { Text("发现新版本 ${release.version}", color = text) },
         text = {
+            com.nextnotes.ui.KeepBarsHidden()
             Column {
                 Text("当前版本 ${Versions.clean(Updates.currentVersion(ctx))}", color = dim, fontSize = 13.sp)
                 if (release.notes.isNotBlank()) {

@@ -1653,6 +1653,7 @@ private fun EditorPane(
                             onShareAudio = { actions.onShareAudio(editor, it) },
                             onShareImage = actions.onShareImage,
                             onAskAi = { editor.ai.show(aiCapture) }, // NextNotes
+                                onToText = { editor.ai.transcribe(aiCapture()) },
                         )
                         com.xnotes.ui.CropOverlay(canvas)
                         com.xnotes.ui.TextStyleBar(canvas)
@@ -1704,6 +1705,7 @@ private fun EditorPane(
                                 onShareAudio = { actions.onShareAudio(editor, it) },
                                 onShareImage = actions.onShareImage,
                                 onAskAi = { editor.ai.show(aiCapture) }, // NextNotes
+                                onToText = { editor.ai.transcribe(aiCapture()) },
                             )
                             com.xnotes.ui.CropOverlay(editor)
                             com.xnotes.ui.ScreenshotMenu(editor, onShare = actions.onShareImage)
@@ -1754,6 +1756,13 @@ private fun EditorPane(
             enter = androidx.compose.animation.scaleIn() + androidx.compose.animation.fadeIn(),
             exit = androidx.compose.animation.scaleOut() + androidx.compose.animation.fadeOut(),
         ) { com.nextnotes.ui.ai.AiFab { editor.ai.show(aiCapture) } }
+        // NextNotes: handwriting read back as text, to correct and place.
+        editor.ai.transcript?.let { t ->
+            com.nextnotes.ui.ai.TranscriptDialog(t, onClose = { editor.ai.closeTranscript() }) { text, replace ->
+                if (editor.canvasOpen) editor.infinite.placeAiText(t.shot, text, replace) else editor.placeAiText(t.shot, text, replace)
+                editor.ai.closeTranscript()
+            }
+        }
         com.xnotes.ui.ColorDropOverlay(if (editor.canvasOpen) editor.infinite else editor)
     }
 }

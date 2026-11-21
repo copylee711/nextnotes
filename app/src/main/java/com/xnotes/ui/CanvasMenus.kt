@@ -1,6 +1,7 @@
 package com.xnotes.ui
 
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ScrollState
@@ -185,6 +186,7 @@ fun SelectionMenu(
     onShareAudio: ((com.xnotes.core.model.AudioItem) -> Unit)? = null,
     onShareImage: ((java.io.File) -> Unit)? = null,
     onAskAi: (() -> Unit)? = null, // NextNotes
+    onToText: (() -> Unit)? = null, // NextNotes: handwriting to text
 ) {
     val rect = host.selectionMenuRect ?: return
     val palette = LocalPalette.current
@@ -197,7 +199,8 @@ fun SelectionMenu(
     val audio = host.selectedAudio()
     val crops = host.canCropSelection()
     val barHeightPx = with(density) { 48.dp.toPx() }
-    val barWidthPx = with(density) { ((6 + (if (audio != null) 1 else 0) + (if (crops) 1 else 0)) * 46).dp.toPx() }
+    val ai = (if (onAskAi != null) 1 else 0) + (if (onToText != null) 1 else 0) // NextNotes
+    val barWidthPx = with(density) { ((6 + ai + (if (audio != null) 1 else 0) + (if (crops) 1 else 0)) * 46).dp.toPx() }
     val gap = with(density) { 10.dp.toPx() }
     val centerX = ((rect.left + rect.right) / 2.0).toFloat()
     val xPx = (centerX - barWidthPx / 2f).coerceAtLeast(with(density) { 8.dp.toPx() })
@@ -224,6 +227,7 @@ fun SelectionMenu(
             }
             // NextNotes: ask the AI about what is selected (the panel captures it on send).
             onAskAi?.let { ask -> ActionIcon(Icons.Outlined.AutoAwesome, "问 AI") { ask() } }
+            onToText?.let { go -> ActionIcon(Icons.Outlined.TextFields, "转文字") { go() } }
             if (crops) ActionIcon(XnotesIcons.crop, stringResource(R.string.crop)) { host.startCrop() }
             ActionIcon(XnotesIcons.trash, stringResource(R.string.delete), shortcut = Keys.DELETE) { host.deleteSelection() }
             ActionIcon(XnotesIcons.cut, stringResource(R.string.cut)) { host.cutSelection() }

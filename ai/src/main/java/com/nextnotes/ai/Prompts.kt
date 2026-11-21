@@ -28,4 +28,13 @@ object Prompts {
 
     /** The note snapshot sent without a typed question still needs one. */
     const val defaultQuestion = "请看这部分笔记，帮我解答或讲解其中的内容。"
+
+    /**
+     * Handwriting to text. The result goes into a plain text box, which sets no LaTeX, so maths is
+     * asked for in Unicode; and it goes in as it comes back, so nothing may wrap it.
+     */
+    const val transcribe =
+        "把图中的手写内容转写成文字。只输出转写结果本身：不要解释，不要加引号、标题或代码块，保留原来的换行。" +
+            "数学式子用普通文字和 Unicode 符号写，例如 x²、√2、∫、≤、→、α，分式写成 a/b，不要用 LaTeX 或 Markdown。" +
+            "看不清的字用 □ 代替。"
 }

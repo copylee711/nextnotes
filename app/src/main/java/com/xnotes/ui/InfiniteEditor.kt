@@ -695,13 +695,32 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
             val picked = HashSet(selection.items)
             val items = document.items.filter { it in picked }.forExport()
             val bounds = items.map { it.paintBounds() }.reduceOrNull { a, b -> a.union(b) }
-            if (bounds != null) renderItemsBitmap(items, bounds)?.let {
-                return com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.SELECTION, bounds, document)
+            val shown = bounds?.let { com.nextnotes.ui.ai.AiSnapshot.around(it) }
+            if (shown != null) renderItemsBitmap(items, shown)?.let {
+                return com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.SELECTION, shown, document)
             }
         }
         val view = viewport.visibleContentRect()
         val items = document.items.filter { it.paintBounds().intersects(view) }.forExport()
         return renderItemsBitmap(items, view)?.let { com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.VIEW, view, document) }
+    }
+
+    /** NextNotes: handwriting's [text] on the canvas, in place of the ink or under it; the canvas has no text boxes, so it is a label. */
+    fun placeAiText(shot: com.nextnotes.ui.ai.AiSnapshot, text: String, replace: Boolean): Boolean {
+        val region = shot.region ?: return false
+        if (shot.source !== document || text.isBlank()) return false
+        val picked = HashSet(selection.items)
+        val now = document.items.filter { it in picked }.forExport().map { it.paintBounds() }.reduceOrNull { a, b -> a.union(b) }
+        val ink = now?.takeIf { com.nextnotes.ui.ai.AiSnapshot.around(it) == region }
+        val inPlace = replace && ink != null
+        if (inPlace) deleteSelection()
+        val item = com.nextnotes.ui.ai.AiText.label(ink ?: region, text, inPlace, palette?.text ?: com.xnotes.core.model.Rgba(30, 30, 30, 255), textMeasurer)
+        document.addAll(listOf(item))
+        history.push(AddCanvasItems(document, listOf(item)))
+        markDirty()
+        refresh()
+        publishOverlay()
+        return true
     }
 
     /** NextNotes: put the AI's [marks] on the canvas under [shot], as one undo step; -1 when it is another canvas now. */

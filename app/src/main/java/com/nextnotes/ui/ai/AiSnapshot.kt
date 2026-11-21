@@ -20,6 +20,15 @@ class AiSnapshot(
 ) {
     enum class Kind(val label: String) { SELECTION("选区"), VIEW("当前页面") }
 
+    companion object {
+        private const val MAX_SIDE = 2048
+        private const val PNG_LIMIT = 1_500_000
+
+        /** A selection is shown with a margin round it: models misread or drop what touches the edge. */
+        fun around(selection: com.xnotes.core.geometry.Rect): com.xnotes.core.geometry.Rect =
+            selection.outset(maxOf(selection.w, selection.h) * 0.08 + 8.0)
+    }
+
     /**
      * The picture as an image part, its long side capped so a full-screen capture stays a
      * reasonable upload. PNG keeps thin handwriting crisp; a big capture falls back to JPEG.
@@ -42,10 +51,5 @@ class AiSnapshot(
         val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
         android.graphics.Canvas(out).apply { drawColor(android.graphics.Color.WHITE); drawBitmap(src, 0f, 0f, null) }
         return out
-    }
-
-    private companion object {
-        const val MAX_SIDE = 2048
-        const val PNG_LIMIT = 1_500_000
     }
 }
