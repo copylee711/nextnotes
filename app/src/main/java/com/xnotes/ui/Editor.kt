@@ -2019,18 +2019,51 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
 
     /** NextNotes: what the AI is shown, the selection when there is one, else what is on screen. */
     fun captureForAi(): com.nextnotes.ui.ai.AiSnapshot? {
-        renderSelectionBitmap()?.let { return com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.SELECTION) }
-        return renderRegionBitmap(state.visibleContentRect())?.let {
-            com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.VIEW)
+        val picked = controller.selectedItems()
+        selectionContentBounds(picked)?.let { box ->
+            renderRegionBitmap(box, HashSet(picked))?.let {
+                return com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.SELECTION, box, state.document)
+            }
+        }
+        val view = state.visibleContentRect()
+        return renderRegionBitmap(view)?.let {
+            com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.VIEW, view, state.document)
         }
     }
 
-    /** NextNotes: the AI assistant beside this pane. */
-    val ai by lazy { com.nextnotes.ui.ai.AiPaneState(appContext) }
+    /**
+     * NextNotes: put the AI's [marks] on the pages under [shot], as one undo step. Returns how
+     * many were placed, or -1 when the note the picture came from is no longer the one open.
+     */
+    fun addAiMarks(shot: com.nextnotes.ui.ai.AiSnapshot, marks: List<com.nextnotes.ai.Mark>): Int {
+        val region = shot.region ?: return -1
+        if (shot.source !== state.document) return -1
+        val commands = ArrayList<com.xnotes.core.history.Command>()
+        var placed = 0
+        for (mark in marks) {
+            val box = com.nextnotes.ui.ai.AiMarks.contentBox(region, mark)
+            val index = state.pageIndexAtContent(box.center) ?: continue
+            val page = state.document.pages[index]
+            val pr = state.pageRects.getOrNull(index) ?: continue
+            val cover = state.footprint(page)
+            val local = box.translate(cover.left - pr.left, cover.top - pr.top)
+            for (item in com.nextnotes.ui.ai.AiMarks.items(local, mark, cover, textMeasurer)) {
+                page.items.add(item)
+                state.appendToCache(page, item)
+                commands += AddItem(page, item)
+            }
+            placed++
+        }
+        if (commands.isEmpty()) return 0
+        history.push(com.xnotes.core.history.CompositeCommand(commands))
+        state.document.dirty = true
+        refreshContent()
+        view.requestRender()
+        return placed
+    }
 
-    /** The selected items alone over the pages beneath them, cut to their bounds; null with nothing selected. */
-    private fun renderSelectionBitmap(): android.graphics.Bitmap? {
-        val picked = controller.selectedItems()
+    /** NextNotes: the content rectangle [picked] covers, split out of renderSelectionBitmap. */
+    private fun selectionContentBounds(picked: List<com.xnotes.core.model.CanvasItem>): com.xnotes.core.geometry.Rect? {
         if (picked.isEmpty()) return null
         val locate = itemPageLocator()
         var bounds: com.xnotes.core.geometry.Rect? = null
@@ -2041,7 +2074,16 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
             val box = item.paintBounds().translate(pr.left - cover.left, pr.top - cover.top)
             bounds = bounds?.union(box) ?: box
         }
-        return bounds?.let { renderRegionBitmap(it, HashSet(picked)) }
+        return bounds
+    }
+
+    /** NextNotes: the AI assistant beside this pane. */
+    val ai by lazy { com.nextnotes.ui.ai.AiPaneState(appContext) }
+
+    /** The selected items alone over the pages beneath them, cut to their bounds; null with nothing selected. */
+    private fun renderSelectionBitmap(): android.graphics.Bitmap? {
+        val picked = controller.selectedItems()
+        return selectionContentBounds(picked)?.let { renderRegionBitmap(it, HashSet(picked)) }
     }
 
     /** Render a content-space rectangle (whatever it overlaps: pages, backgrounds, ink, the gap)

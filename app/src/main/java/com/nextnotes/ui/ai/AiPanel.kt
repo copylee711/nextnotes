@@ -29,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.outlined.AddComment
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
@@ -76,6 +77,8 @@ fun AiPanel(
     capture: () -> AiSnapshot?,
     onInsertImage: (ByteArray) -> Unit,
     modifier: Modifier = Modifier,
+    /** Puts an answer's marks on the page its picture came from; how many went on, or -1 if that page is gone. */
+    onMark: (AiSnapshot, List<com.nextnotes.ai.Mark>) -> Int = { _, _ -> -1 },
 ) {
     val host = remember(onInsertImage) {
         ArtifactHost(onRevise = { state.input = "修改「${it.title}」：" }, onInsert = onInsertImage)
@@ -142,7 +145,7 @@ fun AiPanel(
                 ) {
                     items(state.turns) { turn ->
                         ProvideArtifactScope(ArtifactScope(host, turn.streaming)) {
-                            TurnView(turn, text, dim, surface, border, palette)
+                            TurnView(turn, text, dim, surface, border, palette, onMark)
                         }
                     }
                 }
@@ -267,7 +270,10 @@ private fun EmptyHint(state: AiPaneState, dim: Color, accent: Color) {
 }
 
 @Composable
-private fun TurnView(turn: AiTurn, text: Color, dim: Color, surface: Color, border: Color, palette: com.xnotes.ui.theme.Palette) {
+private fun TurnView(
+    turn: AiTurn, text: Color, dim: Color, surface: Color, border: Color, palette: com.xnotes.ui.theme.Palette,
+    onMark: (AiSnapshot, List<com.nextnotes.ai.Mark>) -> Int,
+) {
     val chrome = com.nextnotes.ui.theme.LocalChrome.current
     if (turn.role == Role.USER) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
@@ -297,18 +303,54 @@ private fun TurnView(turn: AiTurn, text: Color, dim: Color, surface: Color, bord
             )
             if (expanded) Text(turn.reasoning, color = dim, fontSize = 12.sp, lineHeight = 18.sp, modifier = Modifier.padding(bottom = 6.dp))
         }
+        // The marks block is for the page, not for reading.
+        val (shown, marks) = remember(turn.text) { com.nextnotes.ai.Marks.split(turn.text) }
         if (turn.text.isNotEmpty()) {
-            MarkdownMath(turn.text, text, dim, surface, palette.text)
+            MarkdownMath(shown, text, dim, surface, palette.text)
         } else if (turn.streaming) {
             Text(if (turn.reasoning.isNotBlank()) "思考中…" else "正在读取笔记…", color = dim, fontSize = 14.sp)
         }
         turn.notice?.let { Text(it, color = dim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
         turn.error?.let { Text(it, color = palette.danger.toComposeColor(), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
+        val shot = turn.source
+        if (!turn.streaming && marks.isNotEmpty() && shot != null) {
+            MarkBar(turn, marks, shot, palette, onMark)
+        }
         if (!turn.streaming && turn.text.isNotEmpty()) {
             val clipboard = LocalClipboardManager.current
             Row(Modifier.padding(top = 2.dp)) {
                 HeaderButton(Icons.Outlined.ContentCopy, "复制", dim) { clipboard.setText(AnnotatedString(turn.text)) }
             }
+        }
+    }
+}
+
+/** Offers to put an answer's marks on the page, then says how it went. */
+@Composable
+private fun MarkBar(
+    turn: AiTurn,
+    marks: List<com.nextnotes.ai.Mark>,
+    shot: AiSnapshot,
+    palette: com.xnotes.ui.theme.Palette,
+    onMark: (AiSnapshot, List<com.nextnotes.ai.Mark>) -> Int,
+) {
+    val accent = palette.accent.toComposeColor()
+    val dim = palette.textDim.toComposeColor()
+    val placed = turn.placed
+    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        when {
+            placed == null -> Row(
+                Modifier.clip(CircleShape).background(accent)
+                    .clickable { turn.placed = onMark(shot, marks) }
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.Draw, null, tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(16.dp))
+                Text("标到页面上（${marks.size} 处）", color = palette.onAccent.toComposeColor(), fontSize = 13.sp, modifier = Modifier.padding(start = 6.dp))
+            }
+            placed > 0 -> Text("已在页面上标出 $placed 处，不满意可以撤销", color = dim, fontSize = 12.sp)
+            placed == 0 -> Text("这些位置不在页面上，没有标出", color = dim, fontSize = 12.sp)
+            else -> Text("截图来自另一篇笔记，回到那篇笔记才能标出", color = dim, fontSize = 12.sp)
         }
     }
 }

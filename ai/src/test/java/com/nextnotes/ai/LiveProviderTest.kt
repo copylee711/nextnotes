@@ -44,6 +44,24 @@ class LiveProviderTest {
         assertTrue("points at the wrong step", result.answer.contains("51"))
     }
 
+    @Test fun marksTheWrongStepOnThePicture() {
+        requireLive()
+        val png = javaClass.classLoader!!.getResourceAsStream("hand_17x23.png")!!.readBytes()
+        val image = Part.Image(Base64.getEncoder().encodeToString(png), "image/png")
+        val check = Prompts.quickActions.first { it.label == "检查过程" }.prompt
+        val result = AiClient(userAgent = "NextNotes/live-test").stream(
+            profile.copy(maxTokens = 16000), key, Prompts.system, listOf(ChatMessage.user(check, image)), UUID.randomUUID().toString(),
+        ) {}
+        val (shown, marks) = Marks.split(result.answer)
+        println("--- shown ---\n$shown\n--- marks ---\n${marks.joinToString("\n")}")
+        // Kept for drawing back on the picture, to look at.
+        java.io.File("build/marks_live.txt").writeText(marks.joinToString("\n") { "${it.left} ${it.top} ${it.right} ${it.bottom} ${it.kind}" })
+        assertTrue("marks something wrong", marks.any { it.kind == Mark.Kind.WRONG })
+        // The wrong partial product, 41, sits right of centre on the second line.
+        val wrong = marks.first { it.kind == Mark.Kind.WRONG }
+        assertTrue("on the second line", (wrong.top + wrong.bottom) / 2 > 0.45)
+    }
+
     @Test fun makesAnOfflineArtifactWhenAPictureHelps() {
         requireLive()
         val ask = "用一个可交互的演示说明 y = a·sin(x) 中 a 对图像的影响。"

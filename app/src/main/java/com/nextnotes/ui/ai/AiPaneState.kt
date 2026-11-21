@@ -35,6 +35,10 @@ class AiTurn(val role: Role, text: String, val snapshot: Bitmap? = null, val sna
     var error by mutableStateOf<String?>(null)
     /** Something to know about an answer that still stands, such as it being cut short. */
     var notice by mutableStateOf<String?>(null)
+    /** The picture an answer was given about, which its marks are placed by. */
+    var source: AiSnapshot? = null
+    /** How many of the answer's marks went on the page; null until they are put there. */
+    var placed by mutableStateOf<Int?>(null)
 }
 
 /** Whether a question takes a picture of the note along. */
@@ -129,7 +133,7 @@ class AiPaneState(context: Context) {
         preview = snapshot
 
         val userTurn = AiTurn(Role.USER, text, snapshot?.bitmap, snapshot?.kind?.label)
-        val answer = AiTurn(Role.ASSISTANT, "").apply { streaming = true }
+        val answer = AiTurn(Role.ASSISTANT, "").apply { streaming = true; source = snapshot }
         // The history goes as text; only this turn carries a picture, which keeps requests small.
         val history = turns.filter { it.error == null && it.text.isNotBlank() }.map {
             if (it.role == Role.USER) ChatMessage.user(it.text) else ChatMessage.assistant(it.text)

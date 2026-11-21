@@ -1743,6 +1743,8 @@ private fun EditorPane(
             } else {
                 insert()
             }
+        }, onMark = { shot, marks ->
+            if (editor.canvasOpen) editor.infinite.addAiMarks(shot, marks) else editor.addAiMarks(shot, marks)
         })
         }
       }

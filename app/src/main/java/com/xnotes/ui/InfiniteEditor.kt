@@ -691,10 +691,31 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
 
     /** NextNotes: what the AI is shown, the selection when there is one, else what is on screen. */
     fun captureForAi(): com.nextnotes.ui.ai.AiSnapshot? {
-        renderSelectionBitmap()?.let { return com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.SELECTION) }
+        if (!selection.isEmpty) {
+            val picked = HashSet(selection.items)
+            val items = document.items.filter { it in picked }.forExport()
+            val bounds = items.map { it.paintBounds() }.reduceOrNull { a, b -> a.union(b) }
+            if (bounds != null) renderItemsBitmap(items, bounds)?.let {
+                return com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.SELECTION, bounds, document)
+            }
+        }
         val view = viewport.visibleContentRect()
         val items = document.items.filter { it.paintBounds().intersects(view) }.forExport()
-        return renderItemsBitmap(items, view)?.let { com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.VIEW) }
+        return renderItemsBitmap(items, view)?.let { com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.VIEW, view, document) }
+    }
+
+    /** NextNotes: put the AI's [marks] on the canvas under [shot], as one undo step; -1 when it is another canvas now. */
+    fun addAiMarks(shot: com.nextnotes.ui.ai.AiSnapshot, marks: List<com.nextnotes.ai.Mark>): Int {
+        val region = shot.region ?: return -1
+        if (shot.source !== document) return -1
+        val items = marks.flatMap { com.nextnotes.ui.ai.AiMarks.items(com.nextnotes.ui.ai.AiMarks.contentBox(region, it), it, null, textMeasurer, textBoxes = false) }
+        if (items.isEmpty()) return 0
+        document.addAll(items)
+        history.push(AddCanvasItems(document, items))
+        markDirty()
+        refresh()
+        publishOverlay()
+        return marks.size
     }
 
     /**

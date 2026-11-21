@@ -7,8 +7,17 @@ import java.io.ByteArrayOutputStream
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-/** What the AI is shown of the note: a picture of the selection or of what is on screen. */
-class AiSnapshot(val bitmap: Bitmap, val kind: Kind) {
+/**
+ * What the AI is shown of the note: a picture of the selection or of what is on screen. [region]
+ * is the content rectangle the picture covers and [source] the document it was taken from, so
+ * marks the AI makes on the picture can be put back on the page.
+ */
+class AiSnapshot(
+    val bitmap: Bitmap,
+    val kind: Kind,
+    val region: com.xnotes.core.geometry.Rect? = null,
+    val source: Any? = null,
+) {
     enum class Kind(val label: String) { SELECTION("选区"), VIEW("当前页面") }
 
     /**
