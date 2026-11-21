@@ -391,6 +391,7 @@ data class Settings(
             .put("dash_length", c.dashLength)
             .put("dash_gap", c.dashGap)
             .put("erase_mode", c.eraseMode.id)
+            .put("nn_erase_mode", c.eraseMode.id) // NextNotes: a mode picked since the eraser cut by default
             .put("switch_back_after_erase", c.switchBackAfterErase)
             .put("erase_markups", c.eraseMarkups)
             .put("scribble_erase", c.scribbleErase)
@@ -426,7 +427,8 @@ data class Settings(
                 neonStrength = o.optDouble("neon_strength", d.neonStrength),
                 dashLength = o.optDouble("dash_length", d.dashLength),
                 dashGap = o.optDouble("dash_gap", d.dashGap),
-                eraseMode = EraseMode.fromId(o.optString("erase_mode", d.eraseMode.id)),
+                // NextNotes: a mode saved before 0.4.1 is xnotes' whole-stroke default, so it gives way.
+                eraseMode = EraseMode.fromId(o.optString("nn_erase_mode", d.eraseMode.id)),
                 switchBackAfterErase = o.optBoolean("switch_back_after_erase", d.switchBackAfterErase),
                 eraseMarkups = o.optBoolean("erase_markups", d.eraseMarkups),
                 scribbleErase = o.optBoolean("scribble_erase", d.scribbleErase),

@@ -14,22 +14,28 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
 /**
- * Call inside a dialog's content. A dialog is a window of its own and takes the focus, so the
- * system brings its bars back over a full-screen app; this hides them again in the dialog's window
- * whenever they are hidden in the activity's.
+ * Call inside a dialog's or a focusable popup's content. Either is a window of its own and takes
+ * the focus, so the system brings its bars back over a full-screen app; this hides them again in
+ * that window whenever they are hidden in the activity's.
  */
 @Composable
 fun KeepBarsHidden() {
-    val window = (LocalView.current.parent as? DialogWindowProvider)?.window ?: return
+    val view = LocalView.current
     val activity = LocalContext.current.findActivity() ?: return
     SideEffect {
         val shown = ViewCompat.getRootWindowInsets(activity.window.decorView)?.isVisible(WindowInsetsCompat.Type.navigationBars())
-        if (shown == false) {
-            WindowCompat.getInsetsController(window, window.decorView).apply {
-                hide(WindowInsetsCompat.Type.systemBars())
-                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
+        if (shown != false) return@SideEffect
+        val window = (view.parent as? DialogWindowProvider)?.window
+        val controller = if (window != null) {
+            WindowCompat.getInsetsController(window, window.decorView)
+        } else {
+            // A popup has no Window, only its own root view in the window manager.
+            if (view.rootView === activity.window.decorView) return@SideEffect
+            @Suppress("DEPRECATION")
+            ViewCompat.getWindowInsetsController(view) ?: return@SideEffect
         }
+        controller.hide(WindowInsetsCompat.Type.systemBars())
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 }
 

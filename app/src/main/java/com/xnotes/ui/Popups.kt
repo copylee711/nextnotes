@@ -1282,6 +1282,7 @@ internal fun DropdownMenu(
         border = BorderStroke(1.dp, palette.border.toComposeColor()),
     ) {
         // A menu or tip opened from inside this one hangs off its own row, not beside the rail.
+        com.nextnotes.ui.KeepBarsHidden() // NextNotes: a menu takes the focus, which would bring the bars back
         CompositionLocalProvider(LocalMenuOffset provides DpOffset.Zero, LocalTipSide provides TipSide.BELOW) { content() }
     }
 }
@@ -1306,7 +1307,7 @@ internal fun AlertDialog(
     if (Eyedropper.target != null) return
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismissRequest,
-        confirmButton = confirmButton,
+        confirmButton = { com.nextnotes.ui.KeepBarsHidden(); confirmButton() }, // NextNotes: see KeepBarsHidden
         modifier = modifier.border(1.dp, LocalPalette.current.border.toComposeColor(), shape),
         dismissButton = dismissButton,
         title = title,
