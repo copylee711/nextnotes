@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NextNotes: Android 12+ backup rules. Encrypted AI keys stay on the device: the Keystore key that
+     opens them is never backed up, so a restored copy would be unreadable anyway. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="nextnotes_ai_keys.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="nextnotes_ai_keys.xml" />
+    </device-transfer>
+</data-extraction-rules>

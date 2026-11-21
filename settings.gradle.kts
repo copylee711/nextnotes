@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "nextnotes"
 include(":app")
+include(":ai")
