@@ -127,6 +127,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import com.xnotes.R
+import com.nextnotes.ui.theme.sticker
+import com.nextnotes.ui.theme.stickerButton
 import com.xnotes.core.model.Rgba
 import com.xnotes.platform.PdfOpenError
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -452,7 +454,7 @@ private fun BackstageSidebar(modifier: Modifier, nav: SidebarNav, onCollapse: ()
             Modifier.fillMaxWidth().padding(start = 18.dp, end = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("NextNotes", color = palette.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text("NextNotes", color = palette.text.toComposeColor(), fontSize = 22.sp, fontFamily = com.nextnotes.ui.theme.LocalChrome.current.display)
             Spacer(Modifier.weight(1f))
             Tooltip(stringResource(R.string.collapse_sidebar)) {
                 IconButton(onClick = onCollapse) {
@@ -590,20 +592,29 @@ private fun BackstageMain(
 @Composable
 private fun Command(icon: ImageVector, label: String, selected: Boolean = false, count: String? = null, onClick: () -> Unit) {
     val palette = LocalPalette.current
+    val chrome = com.nextnotes.ui.theme.LocalChrome.current
+    // NextNotes: under a hard-shadow look the picked row is a sun-yellow sticker set in from the edges.
+    val stuck = chrome.isSticker && selected
+    val pill = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
     Row(
         Modifier
             .fillMaxWidth()
             .height(48.dp)
-            .then(if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier)
+            .then(
+                if (stuck) Modifier.padding(start = 10.dp, end = 10.dp + chrome.drop, top = 2.dp, bottom = 2.dp + chrome.drop)
+                    .sticker(chrome, com.nextnotes.ui.theme.NnColors.sun.toComposeColor(), pill).clip(pill)
+                else if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier,
+            )
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp),
+            .padding(horizontal = if (stuck) 8.dp else 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = label, tint = (if (selected) palette.selectionForeground else palette.accent).toComposeColor(), modifier = Modifier.size(20.dp))
+        val onPill = if (stuck) com.nextnotes.ui.theme.NnColors.ink(false) else palette.selectionForeground
+        Icon(icon, contentDescription = label, tint = (if (selected) onPill else palette.accent).toComposeColor(), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(16.dp))
         Text(
             label,
-            color = if (selected) palette.selectionForeground.toComposeColor() else palette.text.toComposeColor(),
+            color = if (selected) onPill.toComposeColor() else palette.text.toComposeColor(),
             fontSize = 15.sp,
             fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
             modifier = Modifier.weight(1f),
@@ -858,7 +869,16 @@ private fun CreateButton(
     Box(modifier) {
         // One button throughout, so the pill grows out of the circle instead of replacing it.
         Tooltip(if (exporting) exportLabel else createLabel) {
-            ExtendedFloatingActionButton(
+            val chrome = com.nextnotes.ui.theme.LocalChrome.current
+            if (chrome.isSticker && !exporting) {
+                // NextNotes: a pink sticker instead of Material's tonal button.
+                val palette = LocalPalette.current
+                Box(
+                    Modifier.padding(end = chrome.drop, bottom = chrome.drop).size(64.dp)
+                        .stickerButton(palette.accent.toComposeColor(), androidx.compose.foundation.shape.RoundedCornerShape(20.dp)) { menuOpen = true },
+                    contentAlignment = Alignment.Center,
+                ) { Icon(XnotesIcons.plus, createLabel, tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(30.dp)) }
+            } else ExtendedFloatingActionButton(
                 text = { Text(exportLabel) },
                 icon = {
                     Crossfade(exporting, label = "createButtonIcon") { e ->
@@ -903,7 +923,7 @@ private fun ExplorerSection(
                         }
                     }
                     Spacer(Modifier.width(4.dp))
-                    Text("NextNotes", color = palette.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text("NextNotes", color = palette.text.toComposeColor(), fontSize = 24.sp, fontFamily = com.nextnotes.ui.theme.LocalChrome.current.display)
                 }
             }
             Column(Modifier.weight(1f).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {

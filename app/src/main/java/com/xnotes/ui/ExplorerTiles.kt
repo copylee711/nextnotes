@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.xnotes.R
+import com.nextnotes.ui.theme.sticker
 import com.xnotes.core.model.Rgba
 import com.xnotes.core.util.DocumentKind
 import com.xnotes.platform.DocMetaStore
@@ -356,9 +357,17 @@ internal fun GridFileTile(b: ExplorerBody, e: BrowseEntry) {
             .registered(b, e),
     ) {
         // Only the thumbnail is outlined, so the colour code and selection show on it alone.
+        // NextNotes: in a look with a hard shadow the thumbnail is a sticker, outlined in ink.
+        val chrome = com.nextnotes.ui.theme.LocalChrome.current
         Box(
             Modifier.fillMaxWidth().aspectRatio(if (b.view.thumb == ThumbShape.PAGE) 100f / 141f else 1f)
-                .clip(shape).border(if (selected) 2.dp else 1.dp, if (selected) accent else (code ?: palette.border.toComposeColor()), shape),
+                .then(
+                    if (chrome.drop > 0.dp) Modifier.padding(end = chrome.drop, bottom = chrome.drop)
+                        .sticker(chrome, palette.paper.toComposeColor(), shape)
+                        .then(if (selected || code != null) Modifier.border(3.dp, if (selected) accent else code!!, shape) else Modifier)
+                        .clip(shape)
+                    else Modifier.clip(shape).border(if (selected) 2.dp else 1.dp, if (selected) accent else (code ?: palette.border.toComposeColor()), shape),
+                ),
         ) {
             EntryThumb(b.editor, e, b.view.thumb, Modifier.fillMaxSize())
             if (selected) Box(Modifier.fillMaxSize().background(palette.selectionBackground.withAlpha(77).toComposeColor()))
