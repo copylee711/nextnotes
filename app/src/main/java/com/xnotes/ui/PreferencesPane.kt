@@ -27,6 +27,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -219,39 +221,44 @@ fun PreferencesPane(
         Column(
             // Ending at the keyboard's edge scrolls a focused field up out from under it.
             Modifier.fillMaxSize().imePadding().verticalScroll(scrollState)
-                .onGloballyPositioned { viewport = it.boundsInRoot() },
+                .onGloballyPositioned { viewport = it.boundsInRoot() }
+                // NextNotes: a readable column on a wide screen instead of settings strung along one edge.
+                .wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 720.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             SectionTitle(stringResource(R.string.pref_general))
             // NextNotes: the look comes first; the Material colour controls below only apply to its own look.
-            FieldLabel(stringResource(R.string.nn_style))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for ((id, label) in listOf(
-                    "sticker" to R.string.nn_style_sticker, "calm" to R.string.nn_style_calm,
-                    "cool" to R.string.nn_style_cool, "material" to R.string.nn_style_material,
-                )) {
-                    Chip(stringResource(label), com.nextnotes.ui.theme.NnTheme.fromId(prefs.nnTheme).id == id) { update(prefs.copy(nnTheme = id)) }
+            SettingRow(stringResource(R.string.nn_style)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for ((id, label) in listOf(
+                        "sticker" to R.string.nn_style_sticker, "calm" to R.string.nn_style_calm,
+                        "cool" to R.string.nn_style_cool, "material" to R.string.nn_style_material,
+                    )) {
+                        Chip(stringResource(label), com.nextnotes.ui.theme.NnTheme.fromId(prefs.nnTheme).id == id) { update(prefs.copy(nnTheme = id)) }
+                    }
                 }
             }
-            FieldLabel(stringResource(R.string.pref_ui_theme))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(stringResource(R.string.theme_system), prefs.uiAppearance == "system") { update(prefs.copy(uiAppearance = "system")) }
-                Chip(stringResource(R.string.theme_dark), prefs.uiAppearance == "dark") { update(prefs.copy(uiAppearance = "dark")) }
-                Chip(stringResource(R.string.theme_light), prefs.uiAppearance == "light") { update(prefs.copy(uiAppearance = "light")) }
-                Chip(stringResource(R.string.theme_oled), prefs.uiAppearance == "oled") { update(prefs.copy(uiAppearance = "oled")) }
+            SettingRow(stringResource(R.string.pref_ui_theme)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Chip(stringResource(R.string.theme_system), prefs.uiAppearance == "system") { update(prefs.copy(uiAppearance = "system")) }
+                    Chip(stringResource(R.string.theme_dark), prefs.uiAppearance == "dark") { update(prefs.copy(uiAppearance = "dark")) }
+                    Chip(stringResource(R.string.theme_light), prefs.uiAppearance == "light") { update(prefs.copy(uiAppearance = "light")) }
+                    Chip(stringResource(R.string.theme_oled), prefs.uiAppearance == "oled") { update(prefs.copy(uiAppearance = "oled")) }
+                }
             }
             val systemColours = prefs.materialMode == MaterialColourMode.SYSTEM
             if (com.nextnotes.ui.theme.NnTheme.fromId(prefs.nnTheme) == com.nextnotes.ui.theme.NnTheme.MATERIAL) { // NextNotes
-            FieldLabel(stringResource(R.string.material_tone))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(stringResource(R.string.material_system_colours), systemColours) {
-                    update(prefs.copy(materialMode = MaterialColourMode.SYSTEM))
-                }
-                Chip(stringResource(R.string.material_single_tone), prefs.materialMode == MaterialColourMode.SINGLE) {
-                    update(prefs.copy(materialMode = MaterialColourMode.SINGLE))
-                }
-                Chip(stringResource(R.string.material_dual_tone), prefs.materialMode == MaterialColourMode.DUAL) {
-                    update(prefs.copy(materialMode = MaterialColourMode.DUAL))
+            SettingRow(stringResource(R.string.material_tone)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Chip(stringResource(R.string.material_system_colours), systemColours) {
+                        update(prefs.copy(materialMode = MaterialColourMode.SYSTEM))
+                    }
+                    Chip(stringResource(R.string.material_single_tone), prefs.materialMode == MaterialColourMode.SINGLE) {
+                        update(prefs.copy(materialMode = MaterialColourMode.SINGLE))
+                    }
+                    Chip(stringResource(R.string.material_dual_tone), prefs.materialMode == MaterialColourMode.DUAL) {
+                        update(prefs.copy(materialMode = MaterialColourMode.DUAL))
+                    }
                 }
             }
             if (!systemColours) {
@@ -261,10 +268,11 @@ fun PreferencesPane(
                 Text(stringResource(R.string.material_system_fallback), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
             }
             } // NextNotes: Material colour controls
-            FieldLabel(stringResource(R.string.pref_corners))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for ((style, label) in listOf(CornerStyle.SHARP to R.string.corners_sharp, CornerStyle.ROUNDED to R.string.corners_rounded, CornerStyle.SOFT to R.string.corners_soft)) {
-                    Chip(stringResource(label), prefs.cornerStyle == style) { updateHome(prefs.copy(cornerStyle = style)) }
+            SettingRow(stringResource(R.string.pref_corners)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for ((style, label) in listOf(CornerStyle.SHARP to R.string.corners_sharp, CornerStyle.ROUNDED to R.string.corners_rounded, CornerStyle.SOFT to R.string.corners_soft)) {
+                        Chip(stringResource(label), prefs.cornerStyle == style) { updateHome(prefs.copy(cornerStyle = style)) }
+                    }
                 }
             }
             CheckRow(stringResource(R.string.pref_start_fullscreen), editor.fullscreen) { editor.setFullscreenPref(it) }
@@ -272,24 +280,26 @@ fun PreferencesPane(
             HorizontalDivider(color = palette.border.toComposeColor())
             SectionTitle(stringResource(R.string.pref_input))
             CheckRow(stringResource(R.string.pref_finger_draws), prefs.fingerDraws) { update(prefs.copy(fingerDraws = it)) }
-            FieldLabel(stringResource(R.string.pref_zoom_lock_pan))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Chip(stringResource(R.string.pan_single), prefs.zoomLockPan == "single") { update(prefs.copy(zoomLockPan = "single")) }
-                Chip(stringResource(R.string.pan_two), prefs.zoomLockPan == "double") { update(prefs.copy(zoomLockPan = "double")) }
-                Chip(stringResource(R.string.pan_none), prefs.zoomLockPan == "none") { update(prefs.copy(zoomLockPan = "none")) }
+            SettingRow(stringResource(R.string.pref_zoom_lock_pan)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Chip(stringResource(R.string.pan_single), prefs.zoomLockPan == "single") { update(prefs.copy(zoomLockPan = "single")) }
+                    Chip(stringResource(R.string.pan_two), prefs.zoomLockPan == "double") { update(prefs.copy(zoomLockPan = "double")) }
+                    Chip(stringResource(R.string.pan_none), prefs.zoomLockPan == "none") { update(prefs.copy(zoomLockPan = "none")) }
+                }
             }
             CheckRow(stringResource(R.string.pref_detect_shapes), prefs.detectShapes) { update(prefs.copy(detectShapes = it)) }
             CheckRow(stringResource(R.string.pref_pen_hold_eraser), prefs.penHoldEraser) { update(prefs.copy(penHoldEraser = it)) }
-            FieldLabel(stringResource(R.string.pref_pen_button_hold))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                penButtonOptions.forEach { (id, label) ->
-                    Chip(stringResource(label), prefs.penButtonTool == id) { update(prefs.copy(penButtonTool = id)) }
+            SettingRow(stringResource(R.string.pref_pen_button_hold)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    penButtonOptions.forEach { (id, label) ->
+                        Chip(stringResource(label), prefs.penButtonTool == id) { update(prefs.copy(penButtonTool = id)) }
+                    }
                 }
             }
             if (prefs.penButtonTool == "eraser" || prefs.penButtonTool == "pan") {
@@ -298,23 +308,28 @@ fun PreferencesPane(
                 }
             }
             val tapOptions = tapGestureOptions.map { (id, res) -> id to stringResource(res) }
-            FieldLabel(stringResource(R.string.pref_two_finger_tap))
-            OptionDropdown(tapOptions, prefs.twoFingerTap) { update(prefs.copy(twoFingerTap = it)) }
-            FieldLabel(stringResource(R.string.pref_three_finger_tap))
-            OptionDropdown(tapOptions, prefs.threeFingerTap) { update(prefs.copy(threeFingerTap = it)) }
-            FieldLabel(stringResource(R.string.pref_stylus_double_tap))
-            OptionDropdown(tapOptions, prefs.stylusDoubleTap) { update(prefs.copy(stylusDoubleTap = it)) }
-            FieldLabel(stringResource(R.string.pref_stylus_button_tap))
-            OptionDropdown(tapOptions, prefs.stylusButtonTap) { update(prefs.copy(stylusButtonTap = it)) }
-            FieldLabel(stringResource(R.string.pref_redmi_buttons))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.pen_button_1), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
-                    OptionDropdown(tapOptions, prefs.stylusButton1Tap) { update(prefs.copy(stylusButton1Tap = it)) }
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.pen_button_2), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
-                    OptionDropdown(tapOptions, prefs.stylusButton2Tap) { update(prefs.copy(stylusButton2Tap = it)) }
+            SettingRow(stringResource(R.string.pref_two_finger_tap)) {
+                OptionDropdown(tapOptions, prefs.twoFingerTap) { update(prefs.copy(twoFingerTap = it)) }
+            }
+            SettingRow(stringResource(R.string.pref_three_finger_tap)) {
+                OptionDropdown(tapOptions, prefs.threeFingerTap) { update(prefs.copy(threeFingerTap = it)) }
+            }
+            SettingRow(stringResource(R.string.pref_stylus_double_tap)) {
+                OptionDropdown(tapOptions, prefs.stylusDoubleTap) { update(prefs.copy(stylusDoubleTap = it)) }
+            }
+            SettingRow(stringResource(R.string.pref_stylus_button_tap)) {
+                OptionDropdown(tapOptions, prefs.stylusButtonTap) { update(prefs.copy(stylusButtonTap = it)) }
+            }
+            SettingRow(stringResource(R.string.pref_redmi_buttons)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(stringResource(R.string.pen_button_1), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
+                        OptionDropdown(tapOptions, prefs.stylusButton1Tap) { update(prefs.copy(stylusButton1Tap = it)) }
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(stringResource(R.string.pen_button_2), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
+                        OptionDropdown(tapOptions, prefs.stylusButton2Tap) { update(prefs.copy(stylusButton2Tap = it)) }
+                    }
                 }
             }
             CheckRow(stringResource(R.string.pref_volume_keys_turn_pages), prefs.volumeKeysTurnPages) { update(prefs.copy(volumeKeysTurnPages = it)) }
@@ -362,13 +377,14 @@ fun PreferencesPane(
                     }
                 }
             } else {
-                FieldLabel(stringResource(R.string.pref_orientation))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Chip(stringResource(R.string.orientation_portrait), prefs.defaultPageOrientation == Orientation.PORTRAIT) {
-                        update(prefs.copy(defaultPageOrientation = Orientation.PORTRAIT))
-                    }
-                    Chip(stringResource(R.string.orientation_landscape), prefs.defaultPageOrientation == Orientation.LANDSCAPE) {
-                        update(prefs.copy(defaultPageOrientation = Orientation.LANDSCAPE))
+                SettingRow(stringResource(R.string.pref_orientation)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Chip(stringResource(R.string.orientation_portrait), prefs.defaultPageOrientation == Orientation.PORTRAIT) {
+                            update(prefs.copy(defaultPageOrientation = Orientation.PORTRAIT))
+                        }
+                        Chip(stringResource(R.string.orientation_landscape), prefs.defaultPageOrientation == Orientation.LANDSCAPE) {
+                            update(prefs.copy(defaultPageOrientation = Orientation.LANDSCAPE))
+                        }
                     }
                 }
             }
@@ -382,9 +398,10 @@ fun PreferencesPane(
                 valueRange = 0f..64f,
                 modifier = Modifier.width(280.dp),
             )
-            FieldLabel(stringResource(R.string.pref_page_colour))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SwatchCircles(editor, SwatchRole.PAPER, prefs.pageColor) { update(prefs.copy(pageColor = it)) }
+            SettingRow(stringResource(R.string.pref_page_colour)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SwatchCircles(editor, SwatchRole.PAPER, prefs.pageColor) { update(prefs.copy(pageColor = it)) }
+                }
             }
             CheckRow(stringResource(R.string.pref_page_colour_follows_theme), prefs.pageColor == null) {
                 update(prefs.copy(pageColor = if (it) null else editor.swatches(SwatchRole.PAPER).first()))
@@ -397,75 +414,83 @@ fun PreferencesPane(
                 color = palette.textDim.toComposeColor(),
                 fontSize = 12.sp,
             )
-            FieldLabel(stringResource(R.string.pref_default_layout))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExplorerLayout.entries.forEach { l -> Chip(stringResource(l.labelRes), editor.explorerView.layout == l) { editor.setDefaultLayout(l) } }
+            SettingRow(stringResource(R.string.pref_default_layout)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ExplorerLayout.entries.forEach { l -> Chip(stringResource(l.labelRes), editor.explorerView.layout == l) { editor.setDefaultLayout(l) } }
+                }
             }
-            FieldLabel(stringResource(R.string.pref_switcher_layouts))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ExplorerLayout.entries.forEach { l ->
-                    val on = l in prefs.switcherLayouts
-                    ExplorerChip(stringResource(l.labelRes), on, icon = if (on) XnotesIcons.check else XnotesIcons.plus) {
-                        val next = if (on) prefs.switcherLayouts - l else prefs.switcherLayouts + l
-                        if (next.isNotEmpty()) updateHome(prefs.copy(switcherLayouts = ExplorerLayout.entries.filter { it in next }))
+            SettingRow(stringResource(R.string.pref_switcher_layouts)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ExplorerLayout.entries.forEach { l ->
+                        val on = l in prefs.switcherLayouts
+                        ExplorerChip(stringResource(l.labelRes), on, icon = if (on) XnotesIcons.check else XnotesIcons.plus) {
+                            val next = if (on) prefs.switcherLayouts - l else prefs.switcherLayouts + l
+                            if (next.isNotEmpty()) updateHome(prefs.copy(switcherLayouts = ExplorerLayout.entries.filter { it in next }))
+                        }
                     }
                 }
             }
-            FieldLabel(stringResource(R.string.pref_sidebar_sections))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                @Composable
-                fun section(label: String, on: Boolean, flip: () -> Preferences) =
-                    ExplorerChip(label, on, icon = if (on) XnotesIcons.check else XnotesIcons.plus) { updateHome(flip()) }
-                section(stringResource(R.string.recent), prefs.sidebarRecent) { prefs.copy(sidebarRecent = !prefs.sidebarRecent) }
-                section(stringResource(R.string.pinned), prefs.sidebarPinned) { prefs.copy(sidebarPinned = !prefs.sidebarPinned) }
-                section(stringResource(R.string.toolbar_colours), prefs.sidebarColours) { prefs.copy(sidebarColours = !prefs.sidebarColours) }
-                if (prefs.trashDays != 0) section(stringResource(R.string.trash), prefs.sidebarTrash) { prefs.copy(sidebarTrash = !prefs.sidebarTrash) }
+            SettingRow(stringResource(R.string.pref_sidebar_sections)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    @Composable
+                    fun section(label: String, on: Boolean, flip: () -> Preferences) =
+                        ExplorerChip(label, on, icon = if (on) XnotesIcons.check else XnotesIcons.plus) { updateHome(flip()) }
+                    section(stringResource(R.string.recent), prefs.sidebarRecent) { prefs.copy(sidebarRecent = !prefs.sidebarRecent) }
+                    section(stringResource(R.string.pinned), prefs.sidebarPinned) { prefs.copy(sidebarPinned = !prefs.sidebarPinned) }
+                    section(stringResource(R.string.toolbar_colours), prefs.sidebarColours) { prefs.copy(sidebarColours = !prefs.sidebarColours) }
+                    if (prefs.trashDays != 0) section(stringResource(R.string.trash), prefs.sidebarTrash) { prefs.copy(sidebarTrash = !prefs.sidebarTrash) }
+                }
             }
-            FieldLabel(stringResource(R.string.pref_home_opens_to))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(stringResource(R.string.top_folder), prefs.homeOpensTo == "top") { updateHome(prefs.copy(homeOpensTo = "top")) }
-                Chip(stringResource(R.string.last_folder), prefs.homeOpensTo == "last") { updateHome(prefs.copy(homeOpensTo = "last")) }
-                Chip(stringResource(R.string.recent_and_pinned), prefs.homeOpensTo == "shelves") { updateHome(prefs.copy(homeOpensTo = "shelves")) }
+            SettingRow(stringResource(R.string.pref_home_opens_to)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Chip(stringResource(R.string.top_folder), prefs.homeOpensTo == "top") { updateHome(prefs.copy(homeOpensTo = "top")) }
+                    Chip(stringResource(R.string.last_folder), prefs.homeOpensTo == "last") { updateHome(prefs.copy(homeOpensTo = "last")) }
+                    Chip(stringResource(R.string.recent_and_pinned), prefs.homeOpensTo == "shelves") { updateHome(prefs.copy(homeOpensTo = "shelves")) }
+                }
             }
             val words = rememberExplorerWords()
-            FieldLabel(stringResource(R.string.pref_dates))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(words.daysAgo(2), prefs.dateStyle == "relative") { updateHome(prefs.copy(dateStyle = "relative")) }
-                Chip("${words.shortWeekday(java.time.DayOfWeek.WEDNESDAY)} ${clockText(words, java.time.LocalTime.of(17, 30), true)}", prefs.dateStyle == "day") { updateHome(prefs.copy(dateStyle = "day")) }
-                Chip(words.dayMonthYear(16, java.time.Month.SEPTEMBER, 2026), prefs.dateStyle == "date") { updateHome(prefs.copy(dateStyle = "date")) }
+            SettingRow(stringResource(R.string.pref_dates)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Chip(words.daysAgo(2), prefs.dateStyle == "relative") { updateHome(prefs.copy(dateStyle = "relative")) }
+                    Chip("${words.shortWeekday(java.time.DayOfWeek.WEDNESDAY)} ${clockText(words, java.time.LocalTime.of(17, 30), true)}", prefs.dateStyle == "day") { updateHome(prefs.copy(dateStyle = "day")) }
+                    Chip(words.dayMonthYear(16, java.time.Month.SEPTEMBER, 2026), prefs.dateStyle == "date") { updateHome(prefs.copy(dateStyle = "date")) }
+                }
             }
-            FieldLabel(stringResource(R.string.pref_tapping_file))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(stringResource(R.string.tap_opens), !prefs.tapPreviews) { updateHome(prefs.copy(tapPreviews = false)) }
-                Chip(stringResource(R.string.tap_previews), prefs.tapPreviews) { updateHome(prefs.copy(tapPreviews = true)) }
+            SettingRow(stringResource(R.string.pref_tapping_file)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Chip(stringResource(R.string.tap_opens), !prefs.tapPreviews) { updateHome(prefs.copy(tapPreviews = false)) }
+                    Chip(stringResource(R.string.tap_previews), prefs.tapPreviews) { updateHome(prefs.copy(tapPreviews = true)) }
+                }
             }
-            FieldLabel(stringResource(R.string.pref_keep_deleted))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(stringResource(R.string.off), prefs.trashDays == 0) { updateHome(prefs.copy(trashDays = 0)) }
-                Chip(pluralStringResource(R.plurals.days_count, 7, 7), prefs.trashDays == 7) { updateHome(prefs.copy(trashDays = 7)) }
-                Chip(pluralStringResource(R.plurals.days_count, 30, 30), prefs.trashDays == 30) { updateHome(prefs.copy(trashDays = 30)) }
-                Chip(stringResource(R.string.until_emptied), prefs.trashDays == Preferences.TRASH_FOREVER) { updateHome(prefs.copy(trashDays = Preferences.TRASH_FOREVER)) }
+            SettingRow(stringResource(R.string.pref_keep_deleted)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Chip(stringResource(R.string.off), prefs.trashDays == 0) { updateHome(prefs.copy(trashDays = 0)) }
+                    Chip(pluralStringResource(R.plurals.days_count, 7, 7), prefs.trashDays == 7) { updateHome(prefs.copy(trashDays = 7)) }
+                    Chip(pluralStringResource(R.plurals.days_count, 30, 30), prefs.trashDays == 30) { updateHome(prefs.copy(trashDays = 30)) }
+                    Chip(stringResource(R.string.until_emptied), prefs.trashDays == Preferences.TRASH_FOREVER) { updateHome(prefs.copy(trashDays = Preferences.TRASH_FOREVER)) }
+                }
             }
             if (editor.browseRoot != null) {
-                FieldLabel(stringResource(R.string.pref_colour_names))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    editor.colorNames.entries.sortedBy { it.value.lowercase() }.forEach { (c, name) ->
-                        Row(
-                            Modifier.clip(MaterialTheme.shapes.small).background(palette.surface.toComposeColor())
-                                .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.small)
-                                .clickable { namingColor = c }.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Box(Modifier.size(10.dp).clip(CircleShape).background(codeTint(c, palette)))
-                            Text(name, color = palette.text.toComposeColor(), fontSize = 14.sp, maxLines = 1)
+                SettingRow(stringResource(R.string.pref_colour_names)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        editor.colorNames.entries.sortedBy { it.value.lowercase() }.forEach { (c, name) ->
+                            Row(
+                                Modifier.clip(MaterialTheme.shapes.small).background(palette.surface.toComposeColor())
+                                    .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.small)
+                                    .clickable { namingColor = c }.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Box(Modifier.size(10.dp).clip(CircleShape).background(codeTint(c, palette)))
+                                Text(name, color = palette.text.toComposeColor(), fontSize = 14.sp, maxLines = 1)
+                            }
                         }
-                    }
-                    var picking by remember { mutableStateOf(false) }
-                    Box {
-                        ExplorerChip(stringResource(R.string.name_a_colour), false, icon = XnotesIcons.plus) { picking = true }
-                        DropdownMenu(expanded = picking, onDismissRequest = { picking = false }) {
-                            ColorCodeMenuContent { c -> picking = false; if (c != null) namingColor = c }
+                        var picking by remember { mutableStateOf(false) }
+                        Box {
+                            ExplorerChip(stringResource(R.string.name_a_colour), false, icon = XnotesIcons.plus) { picking = true }
+                            DropdownMenu(expanded = picking, onDismissRequest = { picking = false }) {
+                                ColorCodeMenuContent { c -> picking = false; if (c != null) namingColor = c }
+                            }
                         }
                     }
                 }
@@ -565,30 +590,33 @@ fun PreferencesPane(
             SectionTitle(stringResource(R.string.pref_toolbar))
             // The look, like the swatch count below, is one setting for both bars.
             val look = prefs.toolbarLook
-            FieldLabel(stringResource(R.string.pref_toolbar_style))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(stringResource(R.string.toolbar_docked), !look.floating) { updateHome(prefs.copy(toolbarLook = look.copy(floating = false))) }
-                Chip(stringResource(R.string.toolbar_floating), look.floating) { updateHome(prefs.copy(toolbarLook = look.copy(floating = true))) }
-            }
-            FieldLabel(stringResource(R.string.pref_toolbar_position))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for ((position, label) in listOf(
-                    ToolbarPosition.TOP to R.string.edge_top,
-                    ToolbarPosition.BOTTOM to R.string.edge_bottom,
-                    ToolbarPosition.LEFT to R.string.edge_left,
-                    ToolbarPosition.RIGHT to R.string.edge_right,
-                )) {
-                    Chip(stringResource(label), look.position == position) { updateHome(prefs.copy(toolbarLook = look.copy(position = position))) }
+            SettingRow(stringResource(R.string.pref_toolbar_style)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Chip(stringResource(R.string.toolbar_docked), !look.floating) { updateHome(prefs.copy(toolbarLook = look.copy(floating = false))) }
+                    Chip(stringResource(R.string.toolbar_floating), look.floating) { updateHome(prefs.copy(toolbarLook = look.copy(floating = true))) }
                 }
             }
-            FieldLabel(stringResource(R.string.pref_toolbar_size))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for ((size, label) in listOf(
-                    ToolbarSize.COMPACT to R.string.toolbar_size_compact,
-                    ToolbarSize.REGULAR to R.string.toolbar_size_regular,
-                    ToolbarSize.COMFORTABLE to R.string.toolbar_size_comfortable,
-                )) {
-                    Chip(stringResource(label), look.size == size) { updateHome(prefs.copy(toolbarLook = look.copy(size = size))) }
+            SettingRow(stringResource(R.string.pref_toolbar_position)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for ((position, label) in listOf(
+                        ToolbarPosition.TOP to R.string.edge_top,
+                        ToolbarPosition.BOTTOM to R.string.edge_bottom,
+                        ToolbarPosition.LEFT to R.string.edge_left,
+                        ToolbarPosition.RIGHT to R.string.edge_right,
+                    )) {
+                        Chip(stringResource(label), look.position == position) { updateHome(prefs.copy(toolbarLook = look.copy(position = position))) }
+                    }
+                }
+            }
+            SettingRow(stringResource(R.string.pref_toolbar_size)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for ((size, label) in listOf(
+                        ToolbarSize.COMPACT to R.string.toolbar_size_compact,
+                        ToolbarSize.REGULAR to R.string.toolbar_size_regular,
+                        ToolbarSize.COMFORTABLE to R.string.toolbar_size_comfortable,
+                    )) {
+                        Chip(stringResource(label), look.size == size) { updateHome(prefs.copy(toolbarLook = look.copy(size = size))) }
+                    }
                 }
             }
             FieldLabel(stringResource(R.string.pref_toolbar_colours_n, editor.toolbarColorCount))
@@ -608,7 +636,7 @@ fun PreferencesPane(
                 Spacer(Modifier.weight(1f))
                 TextButton(
                     onClick = {
-                        applyEdited(if (canvasTab) ToolbarLayout.CANVAS_DEFAULT else ToolbarLayout.DEFAULT)
+                        applyEdited(if (canvasTab) com.nextnotes.tools.NnToolbars.CANVAS else com.nextnotes.tools.NnToolbars.NOTE)
                     },
                 ) { Text(stringResource(R.string.reset), fontSize = 13.sp) }
             }
@@ -734,7 +762,26 @@ private fun SectionTitle(text: String) {
 
 @Composable
 private fun FieldLabel(text: String) {
-    Text(text, color = LocalPalette.current.accent.toComposeColor(), fontSize = 13.sp)
+    // NextNotes: a label in the text colour; the accent is kept for what can be tapped.
+    Text(text, color = LocalPalette.current.text.toComposeColor(), fontSize = 14.sp)
+}
+
+/**
+ * NextNotes: a setting with its label on the left and its control on the right, so short settings
+ * take one line on a tablet; a narrow screen stacks them.
+ */
+@Composable
+private fun SettingRow(label: String, control: @Composable () -> Unit) {
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (maxWidth < 560.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { FieldLabel(label); control() }
+        } else {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.width(220.dp).padding(end = 16.dp)) { FieldLabel(label) }
+                Box(Modifier.weight(1f)) { control() }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -751,11 +798,12 @@ private fun CustomMaterialControls(prefs: Preferences, update: (Preferences) -> 
         MaterialStyle.NEUTRAL to R.string.material_style_muted,
         MaterialStyle.MONOCHROME to R.string.material_style_grayscale,
     )
-    FieldLabel(stringResource(R.string.material_style))
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        styles.forEach { (style, label) ->
-            Chip(stringResource(label), prefs.materialStyle == style) {
-                update(prefs.copy(materialStyle = style))
+    SettingRow(stringResource(R.string.material_style)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            styles.forEach { (style, label) ->
+                Chip(stringResource(label), prefs.materialStyle == style) {
+                    update(prefs.copy(materialStyle = style))
+                }
             }
         }
     }
@@ -931,10 +979,13 @@ internal fun PageColorGridPopup(initial: Rgba?, onDismiss: () -> Unit, onPick: (
 
 @Composable
 private fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onChange(!checked) }) {
-        Checkbox(checked = checked, onCheckedChange = onChange)
-        Spacer(Modifier.width(2.dp))
-        Text(label, color = LocalPalette.current.text.toComposeColor(), fontSize = 14.sp)
+    // NextNotes: the label on the left and a switch on the right, across the settings column.
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable { onChange(!checked) }.padding(vertical = 2.dp),
+    ) {
+        Text(label, color = LocalPalette.current.text.toComposeColor(), fontSize = 14.sp, modifier = Modifier.weight(1f).padding(end = 16.dp))
+        androidx.compose.material3.Switch(checked = checked, onCheckedChange = onChange)
     }
 }
 

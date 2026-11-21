@@ -146,7 +146,9 @@ object NnColors {
     val mint = rgb(0x4FCB9C)
     val sky = rgb(0x4EA8FF)
 
-    fun ink(dark: Boolean) = if (dark) rgb(0x0B0A12) else rgb(0x25212F)
+    val amber = rgb(0xF5A623)
+
+    fun ink(dark: Boolean) = if (dark) rgb(0x0B0B0D) else rgb(0x1F1F1F)
 
     fun palette(theme: NnTheme, dark: Boolean): Palette {
         val t = when (theme) {
@@ -158,10 +160,10 @@ object NnColors {
         val m = MaterialColors.seeded(pink, dark).copy(
             primary = t.accent,
             onPrimary = if (dark) ink else rgb(0xFFFFFF),
-            primaryContainer = t.pinkTint,
+            primaryContainer = t.primaryTint,
             onPrimaryContainer = t.text,
-            secondary = violet,
-            secondaryContainer = t.violetTint,
+            secondary = t.second,
+            secondaryContainer = t.secondTint,
             onSecondaryContainer = t.text,
             tertiary = sun,
             tertiaryContainer = t.sunTint,
@@ -202,44 +204,48 @@ object NnColors {
     private class Tones(
         val bg: Rgba, val panel: Rgba, val paper: Rgba, val accent: Rgba, val border: Rgba,
         val text: Rgba, val textDim: Rgba, val surface: Rgba, val surfaceHi: Rgba,
-        val pinkTint: Rgba, val violetTint: Rgba, val sunTint: Rgba,
+        /** Behind selected chips and the first quick card; the accent's own light tint. */
+        val primaryTint: Rgba,
+        /** The second colour and its tint, for what sits beside the accent. */
+        val second: Rgba, val secondTint: Rgba,
+        val sunTint: Rgba,
     )
 
     private fun sticker(dark: Boolean) = if (!dark) Tones(
-        // A cool periwinkle desk, so the warm sticker colours stand out on it.
-        bg = rgb(0xEDF0FA), panel = rgb(0xFFFFFF), paper = rgb(0xFFFFFF), accent = rgb(0xE8457E),
-        border = rgb(0xD3D6E8), text = rgb(0x25212F), textDim = rgb(0x646A80),
-        surface = rgb(0xF3F5FC), surfaceHi = rgb(0xE3E7F5),
-        pinkTint = rgb(0xFFE1EC), violetTint = rgb(0xEAE7FF), sunTint = rgb(0xFFF2C2),
+        // After the system notes app: a quiet neutral desk, white cards and one amber accent.
+        bg = rgb(0xF5F5F5), panel = rgb(0xFFFFFF), paper = rgb(0xFFFFFF), accent = amber,
+        border = rgb(0xE3E3E3), text = rgb(0x1F1F1F), textDim = rgb(0x8A8A8A),
+        surface = rgb(0xF0F0F0), surfaceHi = rgb(0xE6E6E6),
+        primaryTint = rgb(0xFFF0D4), second = sky, secondTint = rgb(0xE3EEFF), sunTint = rgb(0xFDE8E3),
     ) else Tones(
-        bg = rgb(0x2B2740), panel = rgb(0x3A3555), paper = rgb(0x2F2B44), accent = rgb(0xFF7FB0),
-        border = rgb(0x5A527E), text = rgb(0xF4F1FF), textDim = rgb(0xB9B2D6),
-        surface = rgb(0x46406A), surfaceHi = rgb(0x524B7A),
-        pinkTint = rgb(0x5A2E48), violetTint = rgb(0x3E3970), sunTint = rgb(0x5A4A1E),
+        bg = rgb(0x1C1C1E), panel = rgb(0x2A2A2C), paper = rgb(0x232325), accent = rgb(0xFFB52E),
+        border = rgb(0x3A3A3C), text = rgb(0xF2F2F2), textDim = rgb(0xA0A0A5),
+        surface = rgb(0x2E2E30), surfaceHi = rgb(0x3A3A3C),
+        primaryTint = rgb(0x4A3A1A), second = sky, secondTint = rgb(0x1E3050), sunTint = rgb(0x4A2A26),
     )
 
     private fun calm(dark: Boolean) = if (!dark) Tones(
         bg = rgb(0xF5F3F0), panel = rgb(0xFFFFFF), paper = rgb(0xFFFFFF), accent = rgb(0xD24A80),
         border = rgb(0xE4DFE8), text = rgb(0x2A2733), textDim = rgb(0x736C80),
         surface = rgb(0xF1EEF4), surfaceHi = rgb(0xE8E3EE),
-        pinkTint = rgb(0xFBE4EE), violetTint = rgb(0xEDEBFB), sunTint = rgb(0xFBF3D8),
+        primaryTint = rgb(0xFBE4EE), second = violet, secondTint = rgb(0xEDEBFB), sunTint = rgb(0xFBF3D8),
     ) else Tones(
         bg = rgb(0x1D1C22), panel = rgb(0x28272F), paper = rgb(0x24232A), accent = rgb(0xF07BA8),
         border = rgb(0x3D3B47), text = rgb(0xEEEBF4), textDim = rgb(0xA9A3B5),
         surface = rgb(0x33313C), surfaceHi = rgb(0x3D3B47),
-        pinkTint = rgb(0x4A2A3B), violetTint = rgb(0x34315A), sunTint = rgb(0x463E22),
+        primaryTint = rgb(0x4A2A3B), second = violet, secondTint = rgb(0x34315A), sunTint = rgb(0x463E22),
     )
 
     private fun cool(dark: Boolean) = if (!dark) Tones(
         bg = rgb(0xEDF0F4), panel = rgb(0xFFFFFF), paper = rgb(0xFFFFFF), accent = rgb(0x3B5BDB),
         border = rgb(0xDADFE7), text = rgb(0x18202D), textDim = rgb(0x5E6979),
         surface = rgb(0xF2F4F8), surfaceHi = rgb(0xE5E9F0),
-        pinkTint = rgb(0xE5ECFF), violetTint = rgb(0xEBEAFB), sunTint = rgb(0xE2F3F5),
+        primaryTint = rgb(0xE5ECFF), second = violet, secondTint = rgb(0xEBEAFB), sunTint = rgb(0xE2F3F5),
     ) else Tones(
         bg = rgb(0x11141A), panel = rgb(0x191D25), paper = rgb(0x151920), accent = rgb(0x7D9BFF),
         border = rgb(0x2A303B), text = rgb(0xE5E9F0), textDim = rgb(0x97A1B2),
         surface = rgb(0x21262F), surfaceHi = rgb(0x2A303B),
-        pinkTint = rgb(0x253055), violetTint = rgb(0x2C2A4A), sunTint = rgb(0x1E3A3F),
+        primaryTint = rgb(0x253055), second = violet, secondTint = rgb(0x2C2A4A), sunTint = rgb(0x1E3A3F),
     )
 
     private fun rgb(v: Int) = Rgba((v shr 16) and 0xFF, (v shr 8) and 0xFF, v and 0xFF, 255)

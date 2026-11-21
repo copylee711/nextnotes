@@ -91,22 +91,27 @@ fun AiPanel(
     // About a third of a tablet; nearly all of a phone, where side by side cannot work anyway.
     val screen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat()
     val panelWidth = if (screen < 640f) screen * 0.92f else (screen * 0.36f).coerceIn(340f, 460f)
+    val tint = palette.materialColors.primaryContainer.toComposeColor()
+    val cardShape = RoundedCornerShape(24.dp)
+    // A card floating beside the page rather than a slab glued to the screen edge.
     Column(
         modifier
             .width(panelWidth.dp)
             .fillMaxHeight()
-            .background(palette.panel.toComposeColor())
-            // The seam with the note, in the look's line.
-            .drawBehind { drawRect(chrome.outlineColor, size = androidx.compose.ui.geometry.Size(chrome.outline.toPx(), size.height)) },
+            .padding(start = 4.dp, top = 12.dp, end = 12.dp + chrome.drop, bottom = 12.dp + chrome.drop)
+            .sticker(chrome, palette.panel.toComposeColor(), cardShape)
+            .clip(cardShape),
     ) {
         // Header: title, the active service, new chat, settings, close.
-        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.AutoAwesome, null, tint = accent, modifier = Modifier.size(20.dp))
-            Column(Modifier.weight(1f).padding(start = 8.dp)) {
-                Text("AI 助手", color = text, fontSize = 18.sp, fontFamily = chrome.display)
+        Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(34.dp).clip(CircleShape).background(accent), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.AutoAwesome, null, tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(18.dp))
+            }
+            Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                Text("AI 助手", color = text, fontSize = 17.sp, fontFamily = chrome.display)
                 val profile = state.activeProfile()
                 Text(
-                    profile?.let { "${it.name} · ${it.model}" } ?: "未配置服务",
+                    profile?.let { it.model.ifBlank { it.name } } ?: "未配置服务",
                     color = dim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.clickable { state.settingsOpen = true },
                 )
@@ -115,7 +120,7 @@ fun AiPanel(
             HeaderButton(Icons.Outlined.Settings, "AI 设置", dim) { state.settingsOpen = true }
             HeaderButton(Icons.Outlined.Close, "关闭", dim) { state.open = false }
         }
-        Box(Modifier.fillMaxWidth().padding(top = 4.dp).background(if (chrome.isSticker) chrome.outlineColor else border).height(chrome.outline))
+        Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).background(border).height(1.dp))
 
         // The conversation.
         val list = rememberLazyListState()
@@ -143,63 +148,66 @@ fun AiPanel(
         }
 
         // What will be sent along, and how.
-        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
+        Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AttachChip(state.attach, accent, dim) {
+                AttachChip(state.attach, accent, dim, tint) {
                     state.attach = if (state.attach == Attach.AUTO) Attach.NONE else Attach.AUTO
                     state.refreshPreview(capture)
                 }
-                Spacer(Modifier.width(8.dp))
                 val preview = state.preview
                 if (state.attach == Attach.AUTO && preview != null) {
+                    Spacer(Modifier.width(8.dp))
                     Image(
                         preview.bitmap.asImageBitmap(), "将发送的内容预览",
                         contentScale = ContentScale.Fit,
-                        modifier = Modifier.size(48.dp, 36.dp).clip(RoundedCornerShape(4.dp)).border(1.dp, border, RoundedCornerShape(4.dp)).background(Color.White),
+                        modifier = Modifier.size(40.dp, 30.dp).clip(RoundedCornerShape(6.dp)).border(1.dp, border, RoundedCornerShape(6.dp)).background(Color.White),
                     )
                     Text(preview.kind.label, color = dim, fontSize = 12.sp, modifier = Modifier.padding(start = 6.dp))
                 }
                 Spacer(Modifier.weight(1f))
                 if (state.attach == Attach.AUTO) HeaderButton(Icons.Outlined.Refresh, "刷新预览", dim) { state.refreshPreview(capture) }
             }
-            Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Soft pills that wrap, so none is cut off at the panel's edge.
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (action in Prompts.quickActions) {
                     Text(
                         action.label, color = text, fontSize = 13.sp,
                         modifier = Modifier
-                            .padding(end = chrome.drop, bottom = chrome.drop)
-                            .stickerButton(palette.panel.toComposeColor(), RoundedCornerShape(14.dp), enabled = !state.busy) {
-                                state.send(action.prompt, capture)
-                            }
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                            .clip(CircleShape)
+                            .background(tint)
+                            .clickable(enabled = !state.busy) { state.send(action.prompt, capture) }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
             }
-            Row(verticalAlignment = Alignment.Bottom) {
+            // One bar: the question and its send button.
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(surface).border(1.dp, border, RoundedCornerShape(22.dp))
+                    .padding(start = 4.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
                 TextField(
                     value = state.input,
                     onValueChange = { state.input = it },
-                    placeholder = { Text("问问 AI…（不输入直接发送也行）", fontSize = 14.sp) },
+                    placeholder = { Text("问问 AI，不输入直接发送也行", fontSize = 14.sp, color = dim) },
                     modifier = Modifier.weight(1f).heightIn(max = 160.dp),
                     textStyle = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, color = text),
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = surface, unfocusedContainerColor = surface,
+                        focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
                         cursorColor = accent,
                     ),
-                    shape = RoundedCornerShape(12.dp),
                 )
-                Spacer(Modifier.width(6.dp))
                 val busy = state.busy
                 Box(
-                    Modifier.padding(end = chrome.drop, bottom = chrome.drop).size(44.dp)
-                        .stickerButton(accent, RoundedCornerShape(14.dp)) { if (busy) state.stop() else state.send(null, capture) },
+                    Modifier.padding(bottom = 4.dp).size(44.dp).clip(CircleShape).background(accent)
+                        .clickable { if (busy) state.stop() else state.send(null, capture) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         if (busy) Icons.Filled.Stop else Icons.AutoMirrored.Filled.Send,
                         if (busy) "停止" else "发送",
-                        tint = palette.onAccent.toComposeColor(),
+                        tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(20.dp),
                     )
                 }
             }
@@ -216,23 +224,29 @@ private fun HeaderButton(icon: ImageVector, desc: String, tint: Color, onClick: 
 }
 
 @Composable
-private fun AttachChip(attach: Attach, accent: Color, dim: Color, onClick: () -> Unit) {
+private fun AttachChip(attach: Attach, accent: Color, dim: Color, tint: Color, onClick: () -> Unit) {
     val on = attach == Attach.AUTO
     Text(
         attach.label, fontSize = 12.sp, color = if (on) accent else dim,
         modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, if (on) accent else dim, RoundedCornerShape(12.dp))
+            .clip(CircleShape)
+            .then(if (on) Modifier.background(tint) else Modifier.border(1.dp, dim, CircleShape))
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .padding(horizontal = 10.dp, vertical = 4.dp),
     )
 }
 
 @Composable
 private fun EmptyHint(state: AiPaneState, dim: Color, accent: Color) {
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(Icons.Outlined.AutoAwesome, null, tint = accent, modifier = Modifier.size(36.dp))
-        Spacer(Modifier.size(12.dp))
+        val chrome = com.nextnotes.ui.theme.LocalChrome.current
+        val tint = LocalPalette.current.materialColors.primaryContainer.toComposeColor()
+        Box(Modifier.size(72.dp).clip(CircleShape).background(tint), contentAlignment = Alignment.Center) {
+            Icon(Icons.Outlined.AutoAwesome, null, tint = accent, modifier = Modifier.size(36.dp))
+        }
+        Spacer(Modifier.size(16.dp))
+        Text("有什么想问的？", color = LocalPalette.current.text.toComposeColor(), fontSize = 20.sp, fontFamily = chrome.display)
+        Spacer(Modifier.size(8.dp))
         if (state.activeProfile() == null) {
             Text("还没有配置 AI 服务", color = dim, fontSize = 14.sp)
             Text(

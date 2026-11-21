@@ -602,14 +602,14 @@ private fun Command(icon: ImageVector, label: String, selected: Boolean = false,
             .height(48.dp)
             .then(
                 if (stuck) Modifier.padding(start = 10.dp, end = 10.dp + chrome.drop, top = 2.dp, bottom = 2.dp + chrome.drop)
-                    .sticker(chrome, com.nextnotes.ui.theme.NnColors.sun.toComposeColor(), pill).clip(pill)
+                    .sticker(chrome, palette.materialColors.primaryContainer.toComposeColor(), pill).clip(pill)
                 else if (selected) Modifier.background(palette.selectionBackground.toComposeColor()) else Modifier,
             )
             .clickable(onClick = onClick)
             .padding(horizontal = if (stuck) 8.dp else 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val onPill = if (stuck) com.nextnotes.ui.theme.NnColors.ink(false) else palette.selectionForeground
+        val onPill = if (stuck) palette.text else palette.selectionForeground
         Icon(icon, contentDescription = label, tint = (if (selected) onPill else palette.accent).toComposeColor(), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(16.dp))
         Text(

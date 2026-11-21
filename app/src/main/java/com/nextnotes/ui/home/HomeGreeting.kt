@@ -70,9 +70,9 @@ fun HomeGreeting(
         Spacer(Modifier.height(16.dp))
         val cards = buildList {
             if (last != null) add(Card(XnotesIcons.clock, stringResource(R.string.nn_continue_last), last.name, scheme.primaryContainer, last.open))
-            add(Card(XnotesIcons.edit, stringResource(R.string.new_note_menu), stringResource(R.string.nn_new_note_hint), scheme.tertiaryContainer, onNewNote))
+            add(Card(XnotesIcons.edit, stringResource(R.string.new_note_menu), stringResource(R.string.nn_new_note_hint), mint, onNewNote))
             add(Card(XnotesIcons.canvas, stringResource(R.string.new_canvas_menu), stringResource(R.string.nn_new_canvas_hint), scheme.secondaryContainer, onNewCanvas))
-            add(Card(XnotesIcons.importDoc, stringResource(R.string.import_pdf), stringResource(R.string.nn_import_pdf_hint), mint, onImportPdf))
+            add(Card(XnotesIcons.importDoc, stringResource(R.string.import_pdf), stringResource(R.string.nn_import_pdf_hint), scheme.tertiaryContainer, onImportPdf))
         }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             // Four across on a tablet, two by two on a phone.

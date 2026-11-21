@@ -168,7 +168,9 @@ private val BlockPointer = Modifier.pointerInput(Unit) { awaitPointerEventScope 
 /** A floating control's own surface, edge and shadow, faded in by [lift] (0 to 1) while files scroll under it. */
 internal fun Modifier.floatingBacking(lift: () -> Float, shape: Shape, fill: Color, edge: Color, shadow: () -> Float = lift): Modifier = this
     .graphicsLayer {
-        shadowElevation = 3.dp.toPx() * shadow()
+        // NextNotes: a shadow under a pill still fading in shows through it as a grey smudge, so it
+        // waits until the pill is solid.
+        shadowElevation = if (lift() >= 0.99f) 3.dp.toPx() * shadow() else 0f
         this.shape = shape
         clip = false
     }
