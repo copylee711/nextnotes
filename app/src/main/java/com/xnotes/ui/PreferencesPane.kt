@@ -709,6 +709,9 @@ fun PreferencesPane(
             )
 
             HorizontalDivider(color = palette.border.toComposeColor())
+            // NextNotes: syncing the notes folder through WebDAV.
+            com.nextnotes.ui.sync.SyncSection(editor.browseRoot) { editor.filesChangedOutside() }
+            HorizontalDivider(color = palette.border.toComposeColor())
             SectionTitle(stringResource(R.string.pref_backup))
             Text(stringResource(R.string.pref_backup_help), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
