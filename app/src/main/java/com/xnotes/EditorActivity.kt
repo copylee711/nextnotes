@@ -192,7 +192,7 @@ class EditorActivity : ComponentActivity() {
                 ed.prewarmBackstage() // warm recents/explorer caches so the first backstage open is instant
             }
             XnotesTheme(ed.palette, ed.cornerStyle) {
-                CompositionLocalProvider(com.xnotes.ui.LocalToolbarLook provides ed.toolbarLook) {
+                CompositionLocalProvider(com.xnotes.ui.LocalToolbarLook provides ed.toolbarLook, com.nextnotes.ui.theme.LocalChrome provides ed.chrome) { // NextNotes: chrome
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (ready) {
                             EditorScreen(

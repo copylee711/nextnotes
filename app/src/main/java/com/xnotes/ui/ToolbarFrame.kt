@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.xnotes.settings.ToolbarLook
 import com.xnotes.settings.ToolbarPosition
 import com.xnotes.settings.ToolbarSize
+import com.nextnotes.ui.theme.sticker
 import com.xnotes.ui.theme.LocalPalette
 import com.xnotes.ui.theme.toComposeColor
 
@@ -140,8 +141,14 @@ internal fun ToolbarFrame(
     val palette = LocalPalette.current
     val shape = MaterialTheme.shapes.extraLarge
     // Docked, the strip fills its edge; floating, a pill only as long as its tools, up to that edge.
+    val chrome = com.nextnotes.ui.theme.LocalChrome.current
     val surface = if (!look.floating) {
         Modifier.background(palette.panel.toComposeColor())
+    } else if (chrome.theme != com.nextnotes.ui.theme.NnTheme.MATERIAL) {
+        // NextNotes: the floating bar is drawn in the look's own manner.
+        Modifier.padding(end = chrome.drop, bottom = chrome.drop)
+            .then(Modifier.sticker(chrome, palette.panel.toComposeColor(), shape))
+            .clip(shape)
     } else {
         Modifier
             .shadow(6.dp, shape)

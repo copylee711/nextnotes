@@ -223,6 +223,16 @@ fun PreferencesPane(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             SectionTitle(stringResource(R.string.pref_general))
+            // NextNotes: the look comes first; the Material colour controls below only apply to its own look.
+            FieldLabel(stringResource(R.string.nn_style))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for ((id, label) in listOf(
+                    "sticker" to R.string.nn_style_sticker, "calm" to R.string.nn_style_calm,
+                    "cool" to R.string.nn_style_cool, "material" to R.string.nn_style_material,
+                )) {
+                    Chip(stringResource(label), com.nextnotes.ui.theme.NnTheme.fromId(prefs.nnTheme).id == id) { update(prefs.copy(nnTheme = id)) }
+                }
+            }
             FieldLabel(stringResource(R.string.pref_ui_theme))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip(stringResource(R.string.theme_system), prefs.uiAppearance == "system") { update(prefs.copy(uiAppearance = "system")) }
@@ -231,6 +241,7 @@ fun PreferencesPane(
                 Chip(stringResource(R.string.theme_oled), prefs.uiAppearance == "oled") { update(prefs.copy(uiAppearance = "oled")) }
             }
             val systemColours = prefs.materialMode == MaterialColourMode.SYSTEM
+            if (com.nextnotes.ui.theme.NnTheme.fromId(prefs.nnTheme) == com.nextnotes.ui.theme.NnTheme.MATERIAL) { // NextNotes
             FieldLabel(stringResource(R.string.material_tone))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip(stringResource(R.string.material_system_colours), systemColours) {
@@ -249,6 +260,7 @@ fun PreferencesPane(
             } else if (Build.VERSION.SDK_INT < 31) {
                 Text(stringResource(R.string.material_system_fallback), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
             }
+            } // NextNotes: Material colour controls
             FieldLabel(stringResource(R.string.pref_corners))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for ((style, label) in listOf(CornerStyle.SHARP to R.string.corners_sharp, CornerStyle.ROUNDED to R.string.corners_rounded, CornerStyle.SOFT to R.string.corners_soft)) {

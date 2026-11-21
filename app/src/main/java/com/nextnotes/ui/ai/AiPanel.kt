@@ -57,6 +57,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nextnotes.ai.Prompts
+import com.nextnotes.ui.theme.sticker
+import com.nextnotes.ui.theme.stickerButton
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.layout.height
 import com.nextnotes.ai.Role
 import com.xnotes.ui.theme.LocalPalette
 import com.xnotes.ui.theme.toComposeColor
@@ -82,6 +86,7 @@ fun AiPanel(
     val border = palette.border.toComposeColor()
     val accent = palette.accent.toComposeColor()
     val surface = palette.surface.toComposeColor()
+    val chrome = com.nextnotes.ui.theme.LocalChrome.current
 
     // About a third of a tablet; nearly all of a phone, where side by side cannot work anyway.
     val screen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat()
@@ -90,13 +95,15 @@ fun AiPanel(
         modifier
             .width(panelWidth.dp)
             .fillMaxHeight()
-            .background(palette.panel.toComposeColor()),
+            .background(palette.panel.toComposeColor())
+            // The seam with the note, in the look's line.
+            .drawBehind { drawRect(chrome.outlineColor, size = androidx.compose.ui.geometry.Size(chrome.outline.toPx(), size.height)) },
     ) {
         // Header: title, the active service, new chat, settings, close.
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.AutoAwesome, null, tint = accent, modifier = Modifier.size(20.dp))
             Column(Modifier.weight(1f).padding(start = 8.dp)) {
-                Text("AI 助手", color = text, fontSize = 16.sp)
+                Text("AI 助手", color = text, fontSize = 18.sp, fontFamily = chrome.display)
                 val profile = state.activeProfile()
                 Text(
                     profile?.let { "${it.name} · ${it.model}" } ?: "未配置服务",
@@ -108,7 +115,7 @@ fun AiPanel(
             HeaderButton(Icons.Outlined.Settings, "AI 设置", dim) { state.settingsOpen = true }
             HeaderButton(Icons.Outlined.Close, "关闭", dim) { state.open = false }
         }
-        Box(Modifier.fillMaxWidth().padding(top = 4.dp).background(border).heightIn(min = 1.dp, max = 1.dp))
+        Box(Modifier.fillMaxWidth().padding(top = 4.dp).background(if (chrome.isSticker) chrome.outlineColor else border).height(chrome.outline))
 
         // The conversation.
         val list = rememberLazyListState()
@@ -160,9 +167,10 @@ fun AiPanel(
                     Text(
                         action.label, color = text, fontSize = 13.sp,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .border(1.dp, border, RoundedCornerShape(14.dp))
-                            .clickable(enabled = !state.busy) { state.send(action.prompt, capture) }
+                            .padding(end = chrome.drop, bottom = chrome.drop)
+                            .stickerButton(palette.panel.toComposeColor(), RoundedCornerShape(14.dp), enabled = !state.busy) {
+                                state.send(action.prompt, capture)
+                            }
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                     )
                 }
@@ -184,8 +192,8 @@ fun AiPanel(
                 Spacer(Modifier.width(6.dp))
                 val busy = state.busy
                 Box(
-                    Modifier.size(44.dp).clip(CircleShape).background(accent)
-                        .clickable { if (busy) state.stop() else state.send(null, capture) },
+                    Modifier.padding(end = chrome.drop, bottom = chrome.drop).size(44.dp)
+                        .stickerButton(accent, RoundedCornerShape(14.dp)) { if (busy) state.stop() else state.send(null, capture) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -243,6 +251,7 @@ private fun EmptyHint(state: AiPaneState, dim: Color, accent: Color) {
 
 @Composable
 private fun TurnView(turn: AiTurn, text: Color, dim: Color, surface: Color, border: Color, palette: com.xnotes.ui.theme.Palette) {
+    val chrome = com.nextnotes.ui.theme.LocalChrome.current
     if (turn.role == Role.USER) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
             turn.snapshot?.let { bmp ->
@@ -255,7 +264,9 @@ private fun TurnView(turn: AiTurn, text: Color, dim: Color, surface: Color, bord
             }
             Text(
                 turn.text, color = text, fontSize = 15.sp,
-                modifier = Modifier.widthIn(max = 300.dp).clip(RoundedCornerShape(12.dp)).background(surface).padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.widthIn(max = 300.dp)
+                    .sticker(chrome, palette.materialColors.secondaryContainer.toComposeColor(), RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
             )
         }
         return

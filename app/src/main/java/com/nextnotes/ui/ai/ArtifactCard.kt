@@ -56,6 +56,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.nextnotes.ai.Artifact
 import com.nextnotes.ai.Artifacts
+import com.nextnotes.ui.theme.sticker
 import com.xnotes.ui.theme.LocalPalette
 import com.xnotes.ui.theme.toComposeColor
 import java.io.ByteArrayInputStream
@@ -97,9 +98,13 @@ fun ArtifactCard(artifact: Artifact) {
     var shown by remember { mutableStateOf<android.graphics.Rect?>(null) }
     val shape = RoundedCornerShape(10.dp)
 
-    Column(Modifier.fillMaxWidth().clip(shape).border(1.dp, border, shape)) {
+    val chrome = com.nextnotes.ui.theme.LocalChrome.current
+    Column(
+        Modifier.fillMaxWidth().padding(end = chrome.drop, bottom = chrome.drop)
+            .then(Modifier.sticker(chrome, palette.panel.toComposeColor(), shape)).clip(shape),
+    ) {
         Row(
-            Modifier.fillMaxWidth().background(surface).padding(start = 10.dp),
+            Modifier.fillMaxWidth().background(if (chrome.isSticker) palette.materialColors.tertiaryContainer.toComposeColor() else surface).padding(start = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.Outlined.Widgets, null, tint = accent, modifier = Modifier.size(18.dp))

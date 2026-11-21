@@ -566,6 +566,9 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     /** How the toolbar is drawn, [Preferences.toolbarLook]. */
     var toolbarLook by mutableStateOf(ToolbarLook())
         private set
+    /** NextNotes: outlines, shadows and the display face of the chosen look. */
+    var chrome by mutableStateOf(com.nextnotes.ui.theme.Chrome.of(com.nextnotes.ui.theme.NnTheme.STICKER, state.palette))
+        private set
     var zoomPercent by mutableStateOf(100)
         private set
 
@@ -2793,6 +2796,9 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     private fun buildPalette(p: Preferences): Palette {
         val appearance = resolvedAppearance(p)
         val dark = appearance != "light"
+        // NextNotes: its own looks have hand-picked colours; only the Material look seeds them.
+        val nn = com.nextnotes.ui.theme.NnTheme.fromId(p.nnTheme)
+        if (nn != com.nextnotes.ui.theme.NnTheme.MATERIAL) return com.nextnotes.ui.theme.NnColors.palette(nn, dark)
         val m = when (p.materialMode) {
             MaterialColourMode.DUAL -> MaterialColors.seeded(p.materialDualSeed, dark, p.materialStyle, p.materialSurfaceSeed, p.materialContrast)
             MaterialColourMode.SINGLE -> MaterialColors.seeded(p.materialSingleSeed, dark, p.materialStyle, contrast = p.materialContrast)
@@ -2819,6 +2825,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
 
     private fun applyPagePrefsToState(p: Preferences) {
         palette = buildPalette(p)
+        chrome = com.nextnotes.ui.theme.Chrome.of(com.nextnotes.ui.theme.NnTheme.fromId(p.nnTheme), palette) // NextNotes
         com.xnotes.platform.AppNightMode.follow(appContext, p.uiAppearance)
         useSwatchesFor(dark = resolvedAppearance(p) != "light")
         cornerStyle = p.cornerStyle
