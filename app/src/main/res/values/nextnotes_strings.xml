@@ -13,4 +13,13 @@
     <string name="nn_style_calm">Calm</string>
     <string name="nn_style_cool">Cool</string>
     <string name="nn_style_material">Material (original)</string>
+    <string name="nn_greet_morning">Good morning</string>
+    <string name="nn_greet_noon">Good midday</string>
+    <string name="nn_greet_afternoon">Good afternoon</string>
+    <string name="nn_greet_evening">Good evening</string>
+    <string name="nn_greet_night">Up late? Take care</string>
+    <string name="nn_continue_last">Pick up where you left off</string>
+    <string name="nn_new_note_hint">Pages to write on</string>
+    <string name="nn_new_canvas_hint">One endless board</string>
+    <string name="nn_import_pdf_hint">Annotate a handout</string>
 </resources>

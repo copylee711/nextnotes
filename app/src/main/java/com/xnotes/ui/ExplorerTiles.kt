@@ -728,9 +728,12 @@ internal fun HomeShelves(
     onSeeAll: () -> Unit,
     onOpenRecent: (BrowseEntry) -> Unit,
     onOpenPin: (com.xnotes.settings.PinnedFolder) -> Unit,
+    // NextNotes: a greeting and quick actions above the shelves.
+    greeting: (@Composable () -> Unit)? = null,
 ) {
     val palette = LocalPalette.current
     Column(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+        greeting?.invoke()
         if (recents.isNotEmpty()) {
             ShelfTitle(stringResource(R.string.recent), stringResource(R.string.see_all), onSeeAll)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -782,7 +785,14 @@ private fun RecentCard(b: ExplorerBody, r: RecentEntry, onOpen: (BrowseEntry) ->
         Modifier.width(168.dp).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onOpen(e) },
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Box(Modifier.size(168.dp).clip(shape).border(1.dp, code ?: palette.border.toComposeColor(), shape)) {
+        // NextNotes: a sticker card under the sticker look.
+        val chrome = com.nextnotes.ui.theme.LocalChrome.current
+        Box(
+            if (chrome.drop > 0.dp) Modifier.padding(end = chrome.drop, bottom = chrome.drop).size(168.dp)
+                .sticker(chrome, palette.paper.toComposeColor(), shape)
+                .then(if (code != null) Modifier.border(3.dp, code, shape) else Modifier).clip(shape)
+            else Modifier.size(168.dp).clip(shape).border(1.dp, code ?: palette.border.toComposeColor(), shape),
+        ) {
             EntryThumb(b.editor, e, ThumbShape.TOP, Modifier.fillMaxSize())
             ThumbBadges(b, e, 6.dp)
         }

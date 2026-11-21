@@ -1615,6 +1615,15 @@ private fun ExplorerSection(
                     onSeeAll = { showRecent = true; selection.clear() },
                     onOpenRecent = { host.onClick(it) },
                     onOpenPin = { openChain(it.uri) },
+                    greeting = if (com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MATERIAL) null else ({
+                        val last = recents.orEmpty().firstOrNull()?.entry
+                        com.nextnotes.ui.home.HomeGreeting(
+                            last = last?.let { e -> com.nextnotes.ui.home.LastNote(com.xnotes.core.util.DocumentKind.stripSuffix(e.name)) { host.onClick(e) } },
+                            onNewNote = { onCreateMode(CreateMode.FILE) },
+                            onNewCanvas = { onCreateMode(CreateMode.CANVAS) },
+                            onImportPdf = calls.importPdf,
+                        )
+                    }),
                 )
             })
             val gridTop: (LazyGridScope.() -> Unit)? = shelfBlock?.let { c -> { item(key = "shelves", span = { GridItemSpan(maxLineSpan) }, contentType = "shelves") { c() } } }

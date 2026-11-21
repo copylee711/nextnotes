@@ -104,7 +104,8 @@ data class Preferences(
     val sidebarColours: Boolean = true,
     val sidebarTrash: Boolean = true,
     /** Where Home opens: "top" (the notes folder), "last" (the folder last shown) or "shelves" (the notes folder under Recent and Pinned). */
-    val homeOpensTo: String = "top",
+    // NextNotes: home opens on the shelves, under a greeting.
+    val homeOpensTo: String = "shelves",
     /** How the explorer writes dates: "relative" (2 days ago), "day" (Wed 17:30) or "date" (16 Sep 2026). */
     val dateStyle: String = "day",
     /** Tapping a file previews it instead of opening it. */
@@ -182,9 +183,10 @@ data class Preferences(
                 put("material_surface_seed", Rgba.toHex(materialSurfaceSeed))
             }
             if (cornerStyle != CornerStyle.ROUNDED) put("corner_style", cornerStyle.id)
-            if (toolbarLook.position != ToolbarPosition.TOP) put("toolbar_position", toolbarLook.position.id)
+            // NextNotes: the defaults are a floating left tray, so only other choices are written.
+            if (toolbarLook.position != ToolbarPosition.LEFT) put("toolbar_position", toolbarLook.position.id)
             if (toolbarLook.size != ToolbarSize.REGULAR) put("toolbar_size", toolbarLook.size.id)
-            if (toolbarLook.floating) put("toolbar_floating", true)
+            if (!toolbarLook.floating) put("toolbar_floating", false)
             startFullscreen?.let { put("start_fullscreen", it) }
             codeThemePath?.let { put("code_theme_path", it) }
             codeThemeName?.let { put("code_theme_name", it) }
@@ -270,7 +272,7 @@ data class Preferences(
                 toolbarLook = ToolbarLook(
                     position = ToolbarPosition.fromId(o.optString("toolbar_position")),
                     size = ToolbarSize.fromId(o.optString("toolbar_size")),
-                    floating = o.optBoolean("toolbar_floating", false),
+                    floating = o.optBoolean("toolbar_floating", true),
                 ),
                 hideWindowDecoration = o.optBoolean("hide_window_decoration", false),
                 pageColor = if (o.isNull("page_color")) null else Rgba.fromHex(o.optString("page_color")),
@@ -323,7 +325,9 @@ data class Preferences(
                 sidebarPinned = o.optBoolean("sidebar_pinned", true),
                 sidebarColours = o.optBoolean("sidebar_colours", true),
                 sidebarTrash = o.optBoolean("sidebar_trash", true),
-                homeOpensTo = o.optString("home_opens_to", "top").let { if (it == "last" || it == "shelves") it else "top" },
+                // NextNotes: settings saved before 0.3 (no "nn_theme" yet) carry xnotes' "top" default, so
+                // they move to the shelves once; a "top" picked since then stays.
+                homeOpensTo = o.optString("home_opens_to", "shelves").let { if (it == "last" || it == "shelves") it else if (o.has("nn_theme")) "top" else "shelves" },
                 dateStyle = o.optString("date_style", "day").let { if (it == "relative" || it == "date") it else "day" },
                 tapPreviews = o.optBoolean("tap_previews", false),
                 trashDays = o.optInt("trash_days", 30).let { if (it == TRASH_FOREVER || it in 0..365) it else 30 },

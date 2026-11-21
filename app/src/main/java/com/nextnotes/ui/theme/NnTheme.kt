@@ -206,9 +206,10 @@ object NnColors {
     )
 
     private fun sticker(dark: Boolean) = if (!dark) Tones(
-        bg = rgb(0xFFF6E6), panel = rgb(0xFFFFFF), paper = rgb(0xFFFFFF), accent = rgb(0xE8457E),
-        border = rgb(0xD8D0E2), text = rgb(0x25212F), textDim = rgb(0x6B6478),
-        surface = rgb(0xFFF1D9), surfaceHi = rgb(0xFFE6BD),
+        // A cool periwinkle desk, so the warm sticker colours stand out on it.
+        bg = rgb(0xEDF0FA), panel = rgb(0xFFFFFF), paper = rgb(0xFFFFFF), accent = rgb(0xE8457E),
+        border = rgb(0xD3D6E8), text = rgb(0x25212F), textDim = rgb(0x646A80),
+        surface = rgb(0xF3F5FC), surfaceHi = rgb(0xE3E7F5),
         pinkTint = rgb(0xFFE1EC), violetTint = rgb(0xEAE7FF), sunTint = rgb(0xFFF2C2),
     ) else Tones(
         bg = rgb(0x2B2740), panel = rgb(0x3A3555), paper = rgb(0x2F2B44), accent = rgb(0xFF7FB0),

@@ -13,4 +13,13 @@
     <string name="nn_style_calm">克制</string>
     <string name="nn_style_cool">冷调</string>
     <string name="nn_style_material">Material（原版）</string>
+    <string name="nn_greet_morning">早上好</string>
+    <string name="nn_greet_noon">中午好</string>
+    <string name="nn_greet_afternoon">下午好</string>
+    <string name="nn_greet_evening">晚上好</string>
+    <string name="nn_greet_night">夜深了，早点休息</string>
+    <string name="nn_continue_last">继续上次</string>
+    <string name="nn_new_note_hint">一页页写下来</string>
+    <string name="nn_new_canvas_hint">无限大的白板</string>
+    <string name="nn_import_pdf_hint">在讲义上批注</string>
 </resources>
