@@ -1,82 +1,49 @@
-<p align="center">
-  <img src="docs/readme-banner.png" width="100%" alt="xnotes: a handwriting-first notebook for Android" />
-</p>
+# NextNotes
 
-<p align="center">
-  <a href="https://github.com/shardulvs/xnotes-android/releases/latest"><img src="https://img.shields.io/github/v/release/shardulvs/xnotes-android?style=flat-square&label=release&color=blue" alt="Release" /></a>
-  <a href="https://f-droid.org/en/packages/com.xnotes"><img src="https://img.shields.io/f-droid/v/com.xnotes?style=flat-square" alt="F-Droid" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-orange?style=flat-square" alt="License" /></a>
-  <img src="https://img.shields.io/badge/Android-8.0%2B-3ddc84?style=flat-square&logo=android&logoColor=white" alt="Android 8.0+" />
-  <a href="https://github.com/sponsors/shardulvs"><img src="https://img.shields.io/badge/sponsor-%E2%9D%A4-ec6cb9?style=flat-square&logo=githubsponsors&logoColor=white" alt="Sponsor" /></a>
-</p>
+开源、离线可用的 Android 手写笔记应用，**AI 是学习助手而不是附加功能**：圈选一道题，或者直接提问，AI 会看到你笔记里的内容（选区或当前页面），帮你答疑、检查解题过程。
 
-<p align="center">
-  <a href="https://f-droid.org/en/packages/com.xnotes"><img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="70" alt="Get it on F-Droid" /></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/shardulvs/xnotes-android"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/fcd1807c8f8d2b8a5e27d4214ac4d472ed045598/assets/graphics/badge_obtainium.png" height="70" alt="Get it on Obtainium" /></a>
-  <a href="https://play.google.com/store/apps/details?id=com.xnotes"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="70" alt="Get it on Google Play" /></a>
-</p>
+NextNotes 是 [xnotes](https://github.com/shardulvs/xnotes-android)（MIT）的分叉。低延迟手写、无限画布、PDF 批注这些核心能力都来自 xnotes，感谢原作者 Shardul Vikram Singh。
 
-<p align="center">
-  <img src="docs/screenshots/editor.png" width="90%" alt="The xnotes editor with a PDF open in dark mode, annotated by hand with a note, an arrow, a highlight and an underline, and page thumbnails down the left" />
-  <br />
-  <em>Annotating a PDF in dark mode, with the pages inverted</em>
-</p>
+## 功能
 
-<p align="center">
-  <img src="docs/screenshots/explorer.png" width="90%" alt="The xnotes file explorer in gallery view, showing a grid of imported book covers with page counts" />
-  <br />
-  <em>Browsing imported PDFs in the gallery view</em>
-</p>
+**手写（来自 xnotes）**
+- 低延迟压感书写，手掌防误触
+- 无限画布 + 分页笔记，任意缩放都清晰
+- PDF 导入与批注、插入空白空间、矢量 PDF 导出
+- Markdown、LaTeX、表格、录音同步回放、20+ 纸张模板
+- 笔记就是你选定文件夹里的普通文件，不锁在私有数据库里
 
----
+**NextNotes 新增**
+- **AI 助手面板**：在笔记旁边打开，提问时自动附带选区或当前页面的截图
+  - 讲解、逐步检查解题过程、只给提示、完整解答、总结等快捷提问
+  - 回答流式输出，公式用 LaTeX 渲染，可以查看模型的思考过程
+- **任意 AI 服务**：OpenAI 兼容接口（OpenAI、DeepSeek、通义千问、OpenCode Go、本地 Ollama 等）和 Anthropic 接口，可以保存多套配置随时切换
+- **密钥只留在本机**：API Key 用 Android 密钥库加密保存，不会上传，也不会进入备份
+- **笔尖长按切换橡皮擦**：给收不到笔身按键的手写笔用（比如小米平板 5 的灵感触控笔）
 
-## Features
+## 安装
 
-- **Ink that feels like a pen**: pressure-sensitive and low latency, with pens and highlighters.
-- **Neon glow**: make any pen glow.
-- **Disappearing ink**: ink that fades away on its own, great for teaching and presenting.
-- **Tape**: cover answers with tape and tap to peel it back, for testing yourself.
-- **Shape snapping**: draw a rough shape, hold, and it snaps clean.
-- **Sharp at any zoom**: ink and PDFs stay crisp however far you zoom in.
-- **Notebooks and an infinite canvas**: pages when you want structure, endless space when you don't.
-- **Book layouts**: single, double or cover pages, scrolling or page flips.
-- **PDF import**: bring in any PDF and write all over it.
-- **Room for side notes**: widen a PDF's margins on any edge and take notes on the side.
-- **Insert space**: drag anywhere on a page to open up room there, even in the middle of a PDF.
-- **PDF text markups**: highlight, underline and strike out text, add comments, search it.
-- **PDF colour filters**: invert, sepia, contrast, brightness, multiply and screen.
-- **Images stay untouched**: filter a PDF and its photos and images keep their true colours.
-- **Dark and OLED modes**: easy on the eyes at night, true black on OLED screens.
-- **Real PDF export**: sharp vector output with selectable text, links and bookmarks.
-- **Markdown**: write in markdown and it formats as you type.
-- **Typed notes**: tables, LaTeX equations and code highlighting, right on the page.
-- **Audio recording**: record a lecture as you write, and your ink replays in sync with it.
-- **20+ page templates**: Cornell, planners, music staves, isometric and more.
-- **Endless themes**: any accent colour, eight styles for each, dual tone and Material You.
-- **Make it yours**: rearrange the toolbar, float it or dock it on any edge, and pick its size.
-- **Split view**: two notes side by side.
-- **A real file explorer**: grid, gallery, list, column and timeline views, with plenty to customise.
-- **Your notes, your folders**: notes are saved as files in a folder you choose, not locked away in an app's database, so you stay in full control of them.
-- **Works with stylus pens**: S Pen and many others.
-- **Always editable**: nothing gets flattened, so every stroke can be moved, restyled or erased later.
-- **Private**: open source, no account, no ads, no tracking, no internet access.
+从 [Releases](https://github.com/copylee711/nextnotes/releases) 下载最新的 `NextNotes-vX.Y.Z.apk` 安装即可。包名是 `com.nextnotes`，可以和原版 xnotes 同时安装。
 
-## Install
+## 使用 AI
 
-| Channel | |
-|---|---|
-| [GitHub Releases](https://github.com/shardulvs/xnotes-android/releases/latest) | Signed APK |
-| [F-Droid](https://f-droid.org/en/packages/com.xnotes) | Built reproducibly from source |
-| [Google Play](https://play.google.com/store/apps/details?id=com.xnotes) | Automatic updates |
+1. 打开一篇笔记，点左下角的 **AI** 按钮。
+2. 第一次使用时，选一个预设（或自定义），填写服务地址、模型名称和 API Key，点"测试连接"确认可用。
+3. 用套索圈选一道题后提问，或者直接提问让 AI 看当前页面。模型需要支持图片输入。
 
-GitHub and F-Droid ship the same signed APK, so you can switch between them without reinstalling.
+截图只会在你提问时发送给你选择的服务。
 
-## Build from source
+## 开发
 
-Needs JDK 17, NDK 27.0.12077973 and CMake 3.22.1.
+- 构建环境和国内网络下的配置：[docs/dev-setup.md](docs/dev-setup.md)
+- 规划和路线图：[docs/plan.md](docs/plan.md)
+- 代码约定：[AGENTS.md](AGENTS.md)
 
-```bash
-git clone https://github.com/shardulvs/xnotes-android.git
-cd xnotes-android
-JAVA_HOME=/path/to/jdk-17 ./gradlew assembleDebug
 ```
+gradlew assembleDebug
+gradlew :ai:testDebugUnitTest :app:testDebugUnitTest
+```
+
+## 许可证
+
+MIT，见 [LICENSE](LICENSE)。保留了 xnotes 的原始版权声明。
