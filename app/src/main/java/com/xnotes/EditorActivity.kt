@@ -203,6 +203,7 @@ class EditorActivity : ComponentActivity() {
                                 onImportConsumed = { pendingImport = null },
                             )
                             SideEffect { launched = true }
+                            com.nextnotes.update.UpdatePrompt() // NextNotes: GitHub Releases update check
                         }
                         com.xnotes.ui.EyedropperOverlay()
                     }

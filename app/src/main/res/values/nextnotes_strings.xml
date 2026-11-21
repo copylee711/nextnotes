@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NextNotes strings, kept apart from upstream's strings.xml to ease merges. -->
+<resources>
+    <string name="nn_tagline">Open-source handwritten notes with an AI study helper</string>
+    <string name="nn_help_make_better">Help improve NextNotes</string>
+    <string name="nn_check_updates">Check for updates</string>
+    <string name="nn_checking">Checking…</string>
+    <string name="nn_auto_check">Check for updates on launch</string>
+    <string name="nn_enjoying">"Enjoying NextNotes? "</string>
+    <string name="nn_based_on_xnotes">Based on xnotes</string>
+</resources>

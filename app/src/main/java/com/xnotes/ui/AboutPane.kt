@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -57,11 +58,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private const val REPO_URL = "https://github.com/shardulvs/xnotes-android"
-private const val SPONSOR_URL = "https://github.com/sponsors/shardulvs"
-private const val ISSUES_URL = "https://github.com/shardulvs/xnotes-android/issues/new"
-private const val FDROID_URL = "https://f-droid.org/en/packages/com.xnotes"
-private const val LICENSE_URL = "https://github.com/shardulvs/xnotes-android/blob/master/LICENSE"
+// NextNotes: links point at the fork; xnotes is credited in the footer.
+private const val REPO_URL = "https://github.com/copylee711/nextnotes"
+private const val ISSUES_URL = "https://github.com/copylee711/nextnotes/issues/new"
+private const val LICENSE_URL = "https://github.com/copylee711/nextnotes/blob/main/LICENSE"
+private const val UPSTREAM_URL = "https://github.com/shardulvs/xnotes-android"
 private const val MIN_FILL_MS = 120L
 
 /**
@@ -105,7 +106,7 @@ fun AboutPane() {
             Text("NextNotes", color = palette.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 24.sp)
             Spacer(Modifier.height(5.dp))
             Text(
-                stringResource(R.string.app_tagline),
+                stringResource(R.string.nn_tagline),
                 color = palette.textDim.toComposeColor(), fontSize = 13.sp, textAlign = TextAlign.Center,
             )
             if (version.isNotEmpty()) {
@@ -124,7 +125,7 @@ fun AboutPane() {
             }
 
             Spacer(Modifier.height(28.dp))
-            Text(stringResource(R.string.help_make_better), color = palette.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(stringResource(R.string.nn_help_make_better), color = palette.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Spacer(Modifier.height(14.dp))
 
             // Three buttons, side by side; each fills with the selection container while pressed.
@@ -134,7 +135,27 @@ fun AboutPane() {
             ) {
                 AboutButton(XnotesIcons.bug, stringResource(R.string.report_bug)) { open(bugReportUrl(version)) }
                 AboutButton(XnotesIcons.idea, stringResource(R.string.request_feature)) { open(featureRequestUrl()) }
-                AboutButton(XnotesIcons.heart, stringResource(R.string.sponsor)) { open(SPONSOR_URL) }
+                AboutButton(
+                    androidx.compose.material.icons.Icons.Outlined.SystemUpdate,
+                    stringResource(if (com.nextnotes.update.Updates.checking) R.string.nn_checking else R.string.nn_check_updates),
+                ) { com.nextnotes.update.Updates.check(ctx, manual = true) }
+            }
+
+            Spacer(Modifier.height(10.dp))
+            var autoCheck by remember { mutableStateOf(com.nextnotes.update.Updates.autoCheck(ctx)) }
+            Row(
+                Modifier.clip(MaterialTheme.shapes.small).clickable {
+                    autoCheck = !autoCheck
+                    com.nextnotes.update.Updates.setAutoCheck(ctx, autoCheck)
+                }.padding(end = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                androidx.compose.material3.Checkbox(
+                    autoCheck,
+                    { autoCheck = it; com.nextnotes.update.Updates.setAutoCheck(ctx, it) },
+                    colors = androidx.compose.material3.CheckboxDefaults.colors(checkedColor = palette.accent.toComposeColor()),
+                )
+                Text(stringResource(R.string.nn_auto_check), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
             }
 
             Spacer(Modifier.height(26.dp))
@@ -143,7 +164,7 @@ fun AboutPane() {
                 Modifier.clickable { open(REPO_URL) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(stringResource(R.string.enjoying_xnotes), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
+                Text(stringResource(R.string.nn_enjoying), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
                 Text(stringResource(R.string.star_on_github), color = palette.accent.toComposeColor(), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
 
@@ -151,7 +172,7 @@ fun AboutPane() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.mit_license), color = palette.textDim.toComposeColor(), fontSize = 11.sp, modifier = Modifier.clickable { open(LICENSE_URL) })
                 Text("   ·   ", color = palette.textDim.toComposeColor(), fontSize = 11.sp)
-                Text("F-Droid", color = palette.textDim.toComposeColor(), fontSize = 11.sp, modifier = Modifier.clickable { open(FDROID_URL) })
+                Text(stringResource(R.string.nn_based_on_xnotes), color = palette.textDim.toComposeColor(), fontSize = 11.sp, modifier = Modifier.clickable { open(UPSTREAM_URL) })
             }
         }
     }
@@ -214,7 +235,7 @@ private fun RowScope.AboutButton(icon: ImageVector, label: String, onClick: () -
 private fun copyVersion(ctx: Context, version: String) {
     runCatching {
         val clip = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clip.setPrimaryClip(ClipData.newPlainText("xnotes version", "xnotes $version"))
+        clip.setPrimaryClip(ClipData.newPlainText("NextNotes version", "NextNotes $version"))
         Toast.makeText(ctx, ctx.getString(R.string.version_copied), Toast.LENGTH_SHORT).show()
     }
 }
@@ -233,7 +254,7 @@ private fun bugReportUrl(version: String): String {
 
 
         ---
-        xnotes ${version.ifEmpty { "(unknown)" }}
+        NextNotes ${version.ifEmpty { "(unknown)" }}
         ${Build.MANUFACTURER} ${Build.MODEL}
         Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})
     """.trimIndent()
@@ -243,7 +264,7 @@ private fun bugReportUrl(version: String): String {
 /** GitHub new-issue link with a lightweight feature template. */
 private fun featureRequestUrl(): String {
     val body = """
-        **What would you like xnotes to do?**
+        **What would you like NextNotes to do?**
 
     """.trimIndent()
     return "$ISSUES_URL?title=${Uri.encode("[Feature] ")}&body=${Uri.encode(body)}"

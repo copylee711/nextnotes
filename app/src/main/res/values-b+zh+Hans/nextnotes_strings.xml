@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NextNotes strings, kept apart from upstream's strings.xml to ease merges. -->
+<resources>
+    <string name="nn_tagline">以 AI 为学习助手的开源手写笔记</string>
+    <string name="nn_help_make_better">帮助改进 NextNotes</string>
+    <string name="nn_check_updates">检查更新</string>
+    <string name="nn_checking">正在检查…</string>
+    <string name="nn_auto_check">启动时自动检查更新</string>
+    <string name="nn_enjoying">喜欢 NextNotes？</string>
+    <string name="nn_based_on_xnotes">基于 xnotes</string>
+</resources>
