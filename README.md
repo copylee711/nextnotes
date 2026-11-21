@@ -17,6 +17,9 @@ NextNotes 是 [xnotes](https://github.com/shardulvs/xnotes-android)（MIT）的�
 - **AI 助手面板**：在笔记旁边打开，提问时自动附带选区或当前页面的截图
   - 讲解、逐步检查解题过程、只给提示、完整解答、总结等快捷提问
   - 回答流式输出，公式用 LaTeX 渲染，可以查看模型的思考过程
+- **交互式 Artifacts**：AI 可以直接做出能动手操作的演示，比如拖动滑块看函数图像怎么变、几何作图、过程动画
+  - 在离线沙箱里运行，不能联网，也读不到你的文件
+  - 可以全屏、看源码、让 AI 接着修改，或者把当前画面插入笔记
 - **任意 AI 服务**：OpenAI 兼容接口（OpenAI、DeepSeek、通义千问、OpenCode Go、本地 Ollama 等）和 Anthropic 接口，可以保存多套配置随时切换
 - **密钥只留在本机**：API Key 用 Android 密钥库加密保存，不会上传，也不会进入备份
 - **笔尖长按切换橡皮擦**：给收不到笔身按键的手写笔用（比如小米平板 5 的灵感触控笔）
@@ -24,6 +27,8 @@ NextNotes 是 [xnotes](https://github.com/shardulvs/xnotes-android)（MIT）的�
 ## 安装
 
 从 [Releases](https://github.com/copylee711/nextnotes/releases) 下载最新的 `NextNotes-vX.Y.Z.apk` 安装即可。包名是 `com.nextnotes`，可以和原版 xnotes 同时安装。
+
+应用启动时会检查 GitHub 上有没有新版本，有的话弹窗提醒。可以忽略某个版本，也可以在"关于"页关掉自动检查、手动检查。
 
 ## 使用 AI
 

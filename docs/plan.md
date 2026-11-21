@@ -123,7 +123,11 @@ xnotes (上游 Fork, :app)
 - ✅ M0.5：真机基线，见 `docs/testing/device-baseline.md`
 - ✅ M1：`:ai` 模块（OpenAI 兼容 + Anthropic，SSE 流式，密钥加密），AI 面板（选区/当前页截图、快捷提问、Markdown + LaTeX 渲染），设置页
 - ✅ 额外：笔尖长按切换橡皮擦；应用图标改为 N；GitHub Actions 打标签自动发布签名 APK（v0.1.0）
-- ⏭ M2（下一步）：交互式 Artifacts → 解题验证批注 + AI 图层 → 回答插入画布 → 会话随笔记保存
+- 🚧 M2 进行中
+  - ✅ 交互式 Artifacts：```html / ```svg 代码块渲染成卡片；沙箱 WebView（CSP 放在页面最前，加上 blockNetworkLoads 和请求拦截，禁止文件访问、跳转和新窗口）；可以全屏、看源码、让 AI 修改、用 PixelCopy 截取画面插入笔记（v0.2.0）
+  - ✅ 额外：从 GitHub Releases 检查更新（启动时自动检查，最多每 6 小时一次，可以关闭、可以忽略某个版本）；"关于"页改为 NextNotes 的信息
+  - ⏭ 下一步：解题验证批注 + AI 图层 → 回答以文本块插入画布 → 会话随笔记保存
+  - 以后再做：给 Artifact 内置 KaTeX 和图表库（目前只能用原生 HTML/SVG/Canvas）
 
 ## 5. 已确认的决定（2026-11-21）
 

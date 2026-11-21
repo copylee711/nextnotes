@@ -59,8 +59,11 @@ jobs:
           apk="NextNotes-$GITHUB_REF_NAME.apk"
           cp app/build/outputs/apk/release/app-release.apk "$apk"
           sha256sum "$apk" > "$apk.sha256"
+          # Hand-written notes, when there are any, are what the in-app update prompt shows.
+          notes="docs/releases/$GITHUB_REF_NAME.md"
+          if [ -f "$notes" ]; then set -- --notes-file "$notes"; else set -- --generate-notes; fi
           gh release create "$GITHUB_REF_NAME" "$apk" "$apk.sha256" \
-            --title "NextNotes $GITHUB_REF_NAME" --generate-notes
+            --title "NextNotes $GITHUB_REF_NAME" "$@"
 
       - name: Keep the APK of a manual run
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
