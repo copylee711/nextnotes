@@ -1723,7 +1723,18 @@ private fun EditorPane(
                 com.xnotes.ui.TextFormatBar(editor)
             }
         }
-        if (editor.ai.open) com.nextnotes.ui.ai.AiPanel(editor.ai, aiCapture)
+        // On a phone the panel covers the note, which would size the picture to a sliver: close it
+        // first and place the picture once the note has its width back.
+        val aiCoversNote = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 640
+        if (editor.ai.open) com.nextnotes.ui.ai.AiPanel(editor.ai, aiCapture, onInsertImage = { bytes ->
+            val insert = { if (editor.canvasOpen) editor.infinite.insertImage(bytes) else editor.insertImageAt(bytes, null) }
+            if (aiCoversNote) {
+                editor.ai.open = false
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ insert() }, 150)
+            } else {
+                insert()
+            }
+        })
       }
         if (!editor.ai.open) com.nextnotes.ui.ai.AiFab(Modifier.align(androidx.compose.ui.Alignment.BottomStart)) { editor.ai.show(aiCapture) }
         com.xnotes.ui.ColorDropOverlay(if (editor.canvasOpen) editor.infinite else editor)

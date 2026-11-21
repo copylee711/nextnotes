@@ -43,4 +43,20 @@ class LiveProviderTest {
         assertTrue("finds the right result", result.answer.contains("391"))
         assertTrue("points at the wrong step", result.answer.contains("51"))
     }
+
+    @Test fun makesAnOfflineArtifactWhenAPictureHelps() {
+        requireLive()
+        val ask = "用一个可交互的演示说明 y = a·sin(x) 中 a 对图像的影响。"
+        val result = AiClient(userAgent = "NextNotes/live-test").stream(
+            profile.copy(maxTokens = 32000), key, Prompts.system, listOf(ChatMessage.user(ask)), UUID.randomUUID().toString(),
+        ) {}
+        val block = Regex("```(\\w+)[^\\n]*\\n([\\s\\S]*?)```").findAll(result.answer)
+            .mapNotNull { Artifacts.of(it.groupValues[1], it.groupValues[2]) }.firstOrNull()
+        println("truncated=${result.truncated} reasoning=${result.reasoning.length} answer=${result.answer.length} chars")
+        println("--- answer ---\n${result.answer}")
+        assertTrue("answers with an artifact", block != null)
+        println("title=${block!!.title}")
+        // It runs offline, so it must not lean on a CDN.
+        assertTrue("loads nothing from outside", !Regex("(src|href)\\s*=\\s*[\"']https?:").containsMatchIn(block.source))
+    }
 }

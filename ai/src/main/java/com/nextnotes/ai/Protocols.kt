@@ -8,6 +8,7 @@ class StreamState {
     val answer = StringBuilder()
     val reasoning = StringBuilder()
     var done = false
+    var truncated = false
 
     /**
      * The delta as shown: some OpenAI-compatible models put their reasoning inline as a leading
@@ -16,7 +17,7 @@ class StreamState {
     fun snapshot(): AiDelta {
         val (thinking, rest) = splitThinking(answer.toString())
         val reasoningText = if (thinking.isEmpty()) reasoning.toString() else reasoning.toString() + thinking
-        return AiDelta(rest, reasoningText)
+        return AiDelta(rest, reasoningText, truncated)
     }
 }
 
@@ -104,14 +105,16 @@ object OpenAiProtocol : WireProtocol {
         val json = runCatching { JSONObject(data) }.getOrNull() ?: return
         json.optJSONObject("error")?.let { throw AiException(it.optString("message", "流式请求出错")) }
         val choice = json.optJSONArray("choices")?.optJSONObject(0) ?: return
+        if (choice.stringOrEmpty("finish_reason") == "length") state.truncated = true
         val delta = choice.optJSONObject("delta") ?: choice.optJSONObject("message") ?: return
         state.reasoning.append(delta.stringOrEmpty("reasoning_content").ifEmpty { delta.stringOrEmpty("reasoning") })
         state.answer.append(delta.stringOrEmpty("content"))
     }
 
     override fun onFull(json: JSONObject, state: StreamState) {
-        val message = json.optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("message")
-            ?: throw AiException("响应里没有 choices[0].message")
+        val choice = json.optJSONArray("choices")?.optJSONObject(0)
+        val message = choice?.optJSONObject("message") ?: throw AiException("响应里没有 choices[0].message")
+        if (choice.stringOrEmpty("finish_reason") == "length") state.truncated = true
         state.reasoning.append(message.stringOrEmpty("reasoning_content").ifEmpty { message.stringOrEmpty("reasoning") })
         state.answer.append(message.stringOrEmpty("content"))
         state.done = true
@@ -170,6 +173,7 @@ object AnthropicProtocol : WireProtocol {
                     "thinking_delta" -> state.reasoning.append(delta.stringOrEmpty("thinking"))
                 }
             }
+            "message_delta" -> if (json.optJSONObject("delta")?.stringOrEmpty("stop_reason") == "max_tokens") state.truncated = true
             "message_stop" -> state.done = true
             "error" -> throw AiException(json.optJSONObject("error")?.optString("message") ?: "流式请求出错")
         }
@@ -177,6 +181,7 @@ object AnthropicProtocol : WireProtocol {
 
     override fun onFull(json: JSONObject, state: StreamState) {
         val content = json.optJSONArray("content") ?: throw AiException("响应里没有 content")
+        if (json.stringOrEmpty("stop_reason") == "max_tokens") state.truncated = true
         for (i in 0 until content.length()) {
             val block = content.optJSONObject(i) ?: continue
             when (block.optString("type")) {

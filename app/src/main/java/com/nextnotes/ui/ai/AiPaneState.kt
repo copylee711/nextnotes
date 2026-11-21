@@ -33,6 +33,8 @@ class AiTurn(val role: Role, text: String, val snapshot: Bitmap? = null, val sna
     var reasoning by mutableStateOf("")
     var streaming by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
+    /** Something to know about an answer that still stands, such as it being cut short. */
+    var notice by mutableStateOf<String?>(null)
 }
 
 /** Whether a question takes a picture of the note along. */
@@ -152,7 +154,13 @@ class AiPaneState(context: Context) {
                 }.let { final ->
                     answer.text = final.answer
                     answer.reasoning = final.reasoning
-                    if (final.answer.isBlank() && !thisCall.cancelled) answer.error = "模型没有返回内容"
+                    when {
+                        thisCall.cancelled -> {}
+                        final.answer.isBlank() && final.truncated -> answer.error =
+                            "模型还没开始回答就用完了输出上限（${profile.maxTokens} tokens，思考过程也算在内）。请在 AI 设置里调大“最大输出 tokens”。"
+                        final.answer.isBlank() -> answer.error = "模型没有返回内容"
+                        final.truncated -> answer.notice = "回答达到输出上限（${profile.maxTokens} tokens），后面被截断了。可以在 AI 设置里调大“最大输出 tokens”。"
+                    }
                 }
             } catch (_: AiCancelled) {
             } catch (e: AiException) {

@@ -67,7 +67,15 @@ import com.xnotes.ui.theme.toComposeColor
  * AI reads the page as it is at that moment.
  */
 @Composable
-fun AiPanel(state: AiPaneState, capture: () -> AiSnapshot?, modifier: Modifier = Modifier) {
+fun AiPanel(
+    state: AiPaneState,
+    capture: () -> AiSnapshot?,
+    onInsertImage: (ByteArray) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val host = remember(onInsertImage) {
+        ArtifactHost(onRevise = { state.input = "修改「${it.title}」：" }, onInsert = onInsertImage)
+    }
     val palette = LocalPalette.current
     val text = palette.text.toComposeColor()
     val dim = palette.textDim.toComposeColor()
@@ -118,7 +126,11 @@ fun AiPanel(state: AiPaneState, capture: () -> AiSnapshot?, modifier: Modifier =
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(state.turns) { turn -> TurnView(turn, text, dim, surface, border, palette) }
+                    items(state.turns) { turn ->
+                        ProvideArtifactScope(ArtifactScope(host, turn.streaming)) {
+                            TurnView(turn, text, dim, surface, border, palette)
+                        }
+                    }
                 }
             }
         }
@@ -262,6 +274,7 @@ private fun TurnView(turn: AiTurn, text: Color, dim: Color, surface: Color, bord
         } else if (turn.streaming) {
             Text(if (turn.reasoning.isNotBlank()) "思考中…" else "正在读取笔记…", color = dim, fontSize = 14.sp)
         }
+        turn.notice?.let { Text(it, color = dim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
         turn.error?.let { Text(it, color = palette.danger.toComposeColor(), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
         if (!turn.streaming && turn.text.isNotEmpty()) {
             val clipboard = LocalClipboardManager.current

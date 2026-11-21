@@ -168,7 +168,9 @@ private fun Block(node: Node, math: MathText, color: Color, dim: Color, codeBg: 
                 }
             }
         }
-        is FencedCodeBlock -> CodeBox(node.literal.trimEnd(), color, codeBg)
+        is FencedCodeBlock -> com.nextnotes.ai.Artifacts.of(node.info, node.literal)
+            ?.let { ArtifactCard(it) }
+            ?: CodeBox(node.literal.trimEnd(), color, codeBg)
         is IndentedCodeBlock -> CodeBox(node.literal.trimEnd(), color, codeBg)
         is BlockQuote -> Row {
             Box(Modifier.width(3.dp).padding(vertical = 2.dp).background(dim).size(3.dp, 24.dp))

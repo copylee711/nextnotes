@@ -95,4 +95,23 @@ class ProtocolsTest {
         val list = listOf(openai.copy(opencodeSession = true, maxTokens = 2000), claude)
         assertEquals(list, ProfileStore.decode(ProfileStore.encode(list)))
     }
+
+    @Test fun runningOutOfTokensIsNoticedOnBothWires() {
+        val o = StreamState()
+        OpenAiProtocol.onEvent(null, """{"choices":[{"delta":{"reasoning_content":"想"},"finish_reason":null}]}""", o)
+        assertFalse(o.snapshot().truncated)
+        OpenAiProtocol.onEvent(null, """{"choices":[{"delta":{},"finish_reason":"length"}]}""", o)
+        assertTrue(o.snapshot().truncated)
+
+        val done = StreamState()
+        OpenAiProtocol.onEvent(null, """{"choices":[{"delta":{"content":"好"},"finish_reason":"stop"}]}""", done)
+        assertFalse(done.snapshot().truncated)
+
+        val a = StreamState()
+        AnthropicProtocol.onEvent("message_delta", """{"type":"message_delta","delta":{"stop_reason":"max_tokens"}}""", a)
+        assertTrue(a.snapshot().truncated)
+        val full = StreamState()
+        AnthropicProtocol.onFull(JSONObject("""{"content":[{"type":"text","text":"x"}],"stop_reason":"end_turn"}"""), full)
+        assertFalse(full.snapshot().truncated)
+    }
 }

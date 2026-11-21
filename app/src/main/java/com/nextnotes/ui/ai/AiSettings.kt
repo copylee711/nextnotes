@@ -121,7 +121,7 @@ private fun ProfileEditor(state: AiPaneState, initial: AiProfile?, onDone: () ->
     var baseUrl by remember { mutableStateOf(initial?.baseUrl ?: "") }
     var model by remember { mutableStateOf(initial?.model ?: "") }
     var opencode by remember { mutableStateOf(initial?.opencodeSession ?: false) }
-    var maxTokens by remember { mutableStateOf((initial?.maxTokens ?: 4096).toString()) }
+    var maxTokens by remember { mutableStateOf((initial?.maxTokens ?: 32000).toString()) }
     // An existing key is never shown back; leaving the field empty keeps it.
     var key by remember { mutableStateOf("") }
     var showKey by remember { mutableStateOf(false) }
@@ -136,7 +136,7 @@ private fun ProfileEditor(state: AiPaneState, initial: AiProfile?, onDone: () ->
         baseUrl = baseUrl.trim(),
         model = model.trim(),
         opencodeSession = opencode,
-        maxTokens = maxTokens.toIntOrNull()?.coerceIn(256, 64000) ?: 4096,
+        maxTokens = maxTokens.toIntOrNull()?.coerceIn(256, 64000) ?: 32000,
     )
 
     AlertDialog(

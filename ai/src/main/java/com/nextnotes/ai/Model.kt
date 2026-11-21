@@ -25,7 +25,7 @@ data class AiProfile(
     val model: String,
     /** Send a stable `x-opencode-session` header per conversation, which OpenCode Go requires. */
     val opencodeSession: Boolean = false,
-    val maxTokens: Int = 4096,
+    val maxTokens: Int = 32000,
 )
 
 /** Starting points for the profile editor. */
@@ -69,6 +69,11 @@ data class ChatMessage(val role: Role, val parts: List<Part>) {
 }
 
 /** What streaming delivered so far: the answer, and the model's visible reasoning when it sends any. */
-data class AiDelta(val answer: String, val reasoning: String)
+data class AiDelta(
+    val answer: String,
+    val reasoning: String,
+    /** The model stopped because it reached max_tokens, not because it was done. */
+    val truncated: Boolean = false,
+)
 
 class AiException(message: String, val httpCode: Int? = null) : Exception(message)
