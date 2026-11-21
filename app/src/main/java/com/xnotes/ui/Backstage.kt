@@ -520,7 +520,7 @@ private fun BackstageRail(modifier: Modifier, nav: SidebarNav, onExpand: () -> U
                     var menuOpen by remember { mutableStateOf(false) }
                     Box {
                         RailItem(XnotesIcons.folder, pin.name, selected = i == nav.activePin, labelled = true, onLongClick = { menuOpen = true }) { nav.onOpenPin(pin) }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, properties = NoBarsPopup) {
                             DropdownMenuItem(text = { Text(stringResource(R.string.unpin_from_sidebar)) }, onClick = { menuOpen = false; nav.onUnpin(pin) })
                         }
                     }
@@ -577,11 +577,14 @@ private fun BackstageMain(
             }
         }
         Box(Modifier.weight(1f).fillMaxWidth().padding(start = PANE_GUTTER, end = PANE_GUTTER, top = 4.dp, bottom = 12.dp)) {
+            // NextNotes: panes cross-fade instead of cutting over.
+            androidx.compose.animation.Crossfade(view, animationSpec = androidx.compose.animation.core.tween(180), label = "backstagePane") { view ->
             when (view) {
                 BackstageView.HOME -> HomePane(editor, calls, createMode, onCreateMode, sidebarOpen, onShowSidebar, link)
                 BackstageView.PREFERENCES -> PreferencesPane(editor, compact, sidebarOpen, onShowSidebar, onBackToHome, onImportCodeTheme, onImportFont, onBackup)
                 BackstageView.TRASH -> TrashPane(editor, sidebarOpen, onShowSidebar, onOpenPreferences)
                 BackstageView.ABOUT -> AboutPane()
+            }
             }
         }
     }
@@ -700,7 +703,7 @@ private fun ColorCommand(color: Rgba, name: String, selected: Boolean, onClick: 
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, properties = NoBarsPopup) {
             DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, onClick = { menuOpen = false; onRename() })
             DropdownMenuItem(text = { Text(stringResource(R.string.remove_name)) }, onClick = { menuOpen = false; onForget() })
         }
@@ -752,7 +755,7 @@ private fun PinnedCommand(label: String, selected: Boolean, onClick: () -> Unit,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, properties = NoBarsPopup) {
             DropdownMenuItem(text = { Text(stringResource(R.string.unpin_from_sidebar)) }, onClick = { menuOpen = false; onUnpin() })
         }
     }
@@ -890,7 +893,7 @@ private fun CreateButton(
                 shape = CircleShape,
             )
         }
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, properties = NoBarsPopup) {
             NewItemMenuItems({ menuOpen = false }, onCreateMode, onImportPdf)
         }
     }
@@ -1418,7 +1421,7 @@ private fun ExplorerSection(
                             var byOpen by remember { mutableStateOf(false) }
                             Box {
                                 ExplorerChip(if (view.timelineByCreated) stringResource(R.string.sort_created) else stringResource(R.string.sort_modified), true, icon = XnotesIcons.sort, trailing = XnotesIcons.chevronDown, labelled = labelled) { byOpen = true }
-                                DropdownMenu(expanded = byOpen, onDismissRequest = { byOpen = false }) {
+                                DropdownMenu(expanded = byOpen, onDismissRequest = { byOpen = false }, properties = NoBarsPopup) {
                                     listOf(true to stringResource(R.string.sort_created), false to stringResource(R.string.sort_modified)).forEach { (created, label) ->
                                         ChoiceMenuItem(created == view.timelineByCreated, onClick = { byOpen = false; setView(view.copy(timelineByCreated = created)) }) { fg ->
                                             Text(label, color = fg)
@@ -1431,7 +1434,7 @@ private fun ExplorerSection(
                             var sortOpen by remember { mutableStateOf(false) }
                             Box {
                                 ExplorerChip(sortLabel(view.sortKey), true, icon = XnotesIcons.sort, trailing = if (view.descending) XnotesIcons.arrowDown else XnotesIcons.arrowUp, labelled = labelled) { sortOpen = true }
-                                DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
+                                DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }, properties = NoBarsPopup) {
                                     val pick: (ExplorerSortKey, Boolean) -> Unit = { k, d -> sortOpen = false; setView(view.copy(sortKey = k, descending = d)) }
                                     ExplorerSortKey.entries.forEach { k -> SortOption(sortLabel(k), k, view.sortKey, view.descending, pick) }
                                 }
@@ -1442,7 +1445,7 @@ private fun ExplorerSection(
                             Box {
                                 val grouped = view.groupBy != GroupBy.NONE
                                 ExplorerChip(stringResource(view.groupBy.chipRes), grouped, icon = XnotesIcons.layers, trailing = XnotesIcons.chevronDown, labelled = labelled) { groupOpen = true }
-                                DropdownMenu(expanded = groupOpen, onDismissRequest = { groupOpen = false }) {
+                                DropdownMenu(expanded = groupOpen, onDismissRequest = { groupOpen = false }, properties = NoBarsPopup) {
                                     GroupBy.entries.forEach { g ->
                                         ChoiceMenuItem(g == view.groupBy, onClick = { groupOpen = false; setView(view.copy(groupBy = g)) }) { fg ->
                                             Text(stringResource(g.labelRes), color = fg)
@@ -1455,7 +1458,7 @@ private fun ExplorerSection(
                         Box {
                             val k = kindFilter
                             ExplorerChip(k?.let { words.kinds(it) } ?: stringResource(R.string.all_kinds), k != null, icon = XnotesIcons.filter, trailing = XnotesIcons.chevronDown, labelled = labelled) { kindOpen = true }
-                            DropdownMenu(expanded = kindOpen, onDismissRequest = { kindOpen = false }) {
+                            DropdownMenu(expanded = kindOpen, onDismissRequest = { kindOpen = false }, properties = NoBarsPopup) {
                                 (listOf<EntryKind?>(null) + listOf(EntryKind.NOTE, EntryKind.PDF, EntryKind.CANVAS)).forEach { option ->
                                     ChoiceMenuItem(option == kindFilter, onClick = { kindOpen = false; kindFilter = option }) { fg ->
                                         Text(option?.let { words.kinds(it) } ?: stringResource(R.string.all_kinds), color = fg)
@@ -1756,7 +1759,7 @@ private fun ExplorerSection(
                     var optionsOpen by remember { mutableStateOf(false) }
                     Box(Modifier.floatingBacking(liftNow, CircleShape, floatFill, floatEdge)) {
                         ExplorerIcon(XnotesIcons.sliders, stringResource(R.string.view_options)) { optionsOpen = true }
-                        DropdownMenu(expanded = optionsOpen, onDismissRequest = { optionsOpen = false }) {
+                        DropdownMenu(expanded = optionsOpen, onDismissRequest = { optionsOpen = false }, properties = NoBarsPopup) {
                             ViewOptionsContent(
                                 view = view.copy(layout = layout),
                                 layouts = ExplorerLayout.entries.filter { !(compactScreen && it == ExplorerLayout.COLUMNS) },
@@ -1773,7 +1776,7 @@ private fun ExplorerSection(
                     var moreOpen by remember { mutableStateOf(false) }
                     Box(Modifier.floatingBacking(liftNow, CircleShape, floatFill, floatEdge)) {
                         ExplorerIcon(XnotesIcons.more, stringResource(R.string.more)) { moreOpen = true }
-                        DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
+                        DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }, properties = NoBarsPopup) {
                             NewItemMenuItems({ moreOpen = false }, onCreateMode, calls.importPdf)
                             HorizontalDivider(color = palette.border.toComposeColor())
                             clipboard?.let { clip ->
@@ -1806,7 +1809,7 @@ private fun ExplorerSection(
                     LaunchedEffect(moreOpen) { if (!moreOpen) colours = false }
                     Box {
                         ExplorerIcon(XnotesIcons.more, stringResource(R.string.more), fg) { moreOpen = true }
-                        DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
+                        DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }, properties = NoBarsPopup) {
                             if (colours) {
                                 ColorCodeMenuContent { c -> moreOpen = false; recolor(selection.toList(), c); selection.clear() }
                             } else {
@@ -2239,7 +2242,7 @@ internal fun EntryMenu(
     // closing the menu resets it so it always reopens on the main list.
     var showColors by remember { mutableStateOf(false) }
     LaunchedEffect(expanded) { if (!expanded) showColors = false }
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss, properties = NoBarsPopup) {
         if (showColors) {
             ColorCodeMenuContent { c -> onDismiss(); onColor?.invoke(c) }
         } else {
@@ -2489,3 +2492,9 @@ internal fun EmptyPane(text: String, art: EmptyArt? = null, actions: (@Composabl
         }
     }
 }
+
+/**
+ * NextNotes: menus that take no typing open without focus, so a full-screen tablet keeps its
+ * navigation bar hidden; a focused popup window brings the system bars back.
+ */
+private val NoBarsPopup = androidx.compose.ui.window.PopupProperties(focusable = false)

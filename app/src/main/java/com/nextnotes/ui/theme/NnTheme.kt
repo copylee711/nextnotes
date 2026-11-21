@@ -103,11 +103,14 @@ fun Modifier.sticker(
     fill: Color,
     shape: Shape = RoundedCornerShape(16.dp),
     pressed: Boolean = false,
-): Modifier {
-    val drop = if (pressed) chrome.drop / 3 else chrome.drop
+): Modifier = stickerAt(chrome, fill, shape, if (pressed) 1f else 0f)
+
+/** [sticker] part way pressed: [press] runs from 0, resting, to 1, fully sunk onto its shadow. */
+fun Modifier.stickerAt(chrome: Chrome, fill: Color, shape: Shape, press: Float): Modifier {
+    val drop = chrome.drop * (1f - press * 2f / 3f)
     var m: Modifier = this
     // Pressed, the face moves onto its shadow by what the shadow lost.
-    if (pressed && chrome.drop > 0.dp) m = m.offset(chrome.drop - drop, chrome.drop - drop)
+    if (press > 0f && chrome.drop > 0.dp) m = m.offset(chrome.drop - drop, chrome.drop - drop)
     if (drop > 0.dp) {
         val color = chrome.outlineColor
         m = m.drawBehind {
@@ -132,7 +135,11 @@ fun Modifier.stickerButton(
     val chrome = LocalChrome.current
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    return this.sticker(chrome, fill, shape, pressed).clip(shape)
+    // Sinks and springs back rather than jumping between the two.
+    val press by androidx.compose.animation.core.animateFloatAsState(
+        if (pressed) 1f else 0f, androidx.compose.animation.core.tween(if (pressed) 60 else 160), label = "stickerPress",
+    )
+    return this.stickerAt(chrome, fill, shape, press).clip(shape)
         .clickable(interactionSource = source, indication = LocalIndication.current, enabled = enabled, onClick = onClick)
 }
 

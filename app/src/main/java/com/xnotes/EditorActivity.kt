@@ -1727,7 +1727,13 @@ private fun EditorPane(
         // On a phone the panel covers the note, which would size the picture to a sliver: close it
         // first and place the picture once the note has its width back.
         val aiCoversNote = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 640
-        if (editor.ai.open) com.nextnotes.ui.ai.AiPanel(editor.ai, aiCapture, onInsertImage = { bytes ->
+        // NextNotes: the panel slides in from the edge and back out.
+        androidx.compose.animation.AnimatedVisibility(
+            visible = editor.ai.open,
+            enter = androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(240)) { it } + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(200)) { it } + androidx.compose.animation.fadeOut(),
+        ) {
+        com.nextnotes.ui.ai.AiPanel(editor.ai, aiCapture, onInsertImage = { bytes ->
             val insert = { if (editor.canvasOpen) editor.infinite.insertImage(bytes) else editor.insertImageAt(bytes, null) }
             if (aiCoversNote) {
                 editor.ai.open = false
@@ -1736,8 +1742,14 @@ private fun EditorPane(
                 insert()
             }
         })
+        }
       }
-        if (!editor.ai.open) com.nextnotes.ui.ai.AiFab(Modifier.align(androidx.compose.ui.Alignment.TopEnd)) { editor.ai.show(aiCapture) }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = !editor.ai.open,
+            modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd),
+            enter = androidx.compose.animation.scaleIn() + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.scaleOut() + androidx.compose.animation.fadeOut(),
+        ) { com.nextnotes.ui.ai.AiFab { editor.ai.show(aiCapture) } }
         com.xnotes.ui.ColorDropOverlay(if (editor.canvasOpen) editor.infinite else editor)
     }
 }

@@ -98,7 +98,9 @@ fun AiPanel(
         modifier
             .width(panelWidth.dp)
             .fillMaxHeight()
-            .padding(start = 4.dp, top = 12.dp, end = 12.dp + chrome.drop, bottom = 12.dp + chrome.drop)
+            // Opaque all the way to the note's edge: a see-through gap shows stale canvas pixels.
+            .background(palette.bg.toComposeColor())
+            .padding(start = 8.dp, top = 12.dp, end = 12.dp + chrome.drop, bottom = 12.dp + chrome.drop)
             .sticker(chrome, palette.panel.toComposeColor(), cardShape)
             .clip(cardShape),
     ) {
@@ -167,8 +169,8 @@ fun AiPanel(
                 Spacer(Modifier.weight(1f))
                 if (state.attach == Attach.AUTO) HeaderButton(Icons.Outlined.Refresh, "刷新预览", dim) { state.refreshPreview(capture) }
             }
-            // Soft pills that wrap, so none is cut off at the panel's edge.
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Soft pills on one line; a narrow panel scrolls them sideways.
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (action in Prompts.quickActions) {
                     Text(
                         action.label, color = text, fontSize = 13.sp,
@@ -176,7 +178,8 @@ fun AiPanel(
                             .clip(CircleShape)
                             .background(tint)
                             .clickable(enabled = !state.busy) { state.send(action.prompt, capture) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        maxLines = 1, softWrap = false,
                     )
                 }
             }
