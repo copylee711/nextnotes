@@ -1942,15 +1942,23 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     override fun unlockItem(item: com.xnotes.core.model.CanvasItem) = controller.unlockItem(item)
     override fun dismissSelectionMenu() { selectionMenu = null }
     override fun dismissContextMenu() { contextMenu = null }
-    fun dismissScreenshot() = controller.clearScreenshot()
+    fun dismissScreenshot() {
+        controller.clearScreenshot()
+        controller.switchBackAfterScreenshot()
+    }
 
     /** Render the screenshot tool's capture rectangle to a PNG and put it on the system clipboard. */
     fun copyScreenshotAsImage() {
         val rect = controller.screenshotRect ?: return
         val bmp = renderRegionBitmap(rect)
-        val ok = bmp != null && com.xnotes.platform.SystemClipboard.putImage(appContext, bmp, "xnotes capture")
-        controller.clearScreenshot()
-        controller.switchBackAfterScreenshot() // return to the previous pen, like the eraser
+        val ok = bmp?.let {
+            try {
+                com.xnotes.platform.SystemClipboard.putImage(appContext, it, "xnotes capture")
+            } finally {
+                it.recycle()
+            }
+        } ?: false
+        if (ok) dismissScreenshot()
         message = if (ok) appContext.getString(R.string.image_copied) else appContext.getString(R.string.err_copy_image)
     }
 
@@ -1958,10 +1966,51 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     fun screenshotImageForShare(): java.io.File? {
         val rect = controller.screenshotRect ?: return null
         val file = renderRegionBitmap(rect)?.let { com.xnotes.platform.ShareFiles.png(appContext, it, state.document.title) }
-        controller.clearScreenshot()
-        controller.switchBackAfterScreenshot()
+        if (file != null) dismissScreenshot()
         if (file == null) message = appContext.getString(R.string.err_share_image)
         return file
+    }
+
+    /** NextNotes: attach only the rectangle the user drew, with its coordinates for AI marks. */
+    fun attachScreenshotToAi() {
+        val rect = controller.screenshotRect ?: return
+        val bitmap = renderRegionBitmap(rect)
+        if (bitmap == null) {
+            message = appContext.getString(R.string.err_read_image)
+            return
+        }
+        ai.attachImage(com.nextnotes.ui.ai.AiSnapshot(
+            bitmap, com.nextnotes.ui.ai.AiSnapshot.Kind.SELECTION, rect, state.document,
+            appContext.getString(R.string.tool_screenshot),
+        ))
+        ai.open = true
+        dismissScreenshot()
+    }
+
+    /** NextNotes: place the capture into the open scratch pane as an undoable image. */
+    fun insertScreenshotBeside() {
+        val target = sibling?.takeIf { it.noteOpen && (!it.hasPdf || it.canvasOpen) } ?: return
+        val rect = controller.screenshotRect ?: return
+        val bitmap = renderRegionBitmap(rect) ?: return
+        val png = java.io.ByteArrayOutputStream()
+        try {
+            if (!bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, png)) {
+                message = appContext.getString(R.string.err_read_image)
+                return
+            }
+            val bytes = png.toByteArray()
+            if (target.canvasOpen) {
+                if (!target.infinite.insertImage(bytes)) {
+                    message = appContext.getString(R.string.err_read_image)
+                    return
+                }
+            } else {
+                target.insertImage(bytes)
+            }
+            dismissScreenshot()
+        } finally {
+            bitmap.recycle()
+        }
     }
 
     // --- crop: a lone picture cut down to part of itself, for good ---

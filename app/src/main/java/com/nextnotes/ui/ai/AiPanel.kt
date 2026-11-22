@@ -69,9 +69,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -79,6 +81,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nextnotes.ai.Role
+import com.xnotes.R
 import com.xnotes.ui.theme.LocalPalette
 import com.xnotes.ui.theme.toComposeColor
 import kotlinx.coroutines.delay
@@ -473,8 +476,8 @@ private fun Composer(
         val preview = state.preview
         // Once the conversation is under way, the page folds into a small tag beside the + so the
         // composer stays low and the answers keep the room.
-        val folded = state.turns.isNotEmpty()
-        if (state.attach == Attach.AUTO && preview != null && !folded) {
+        val folded = state.turns.isNotEmpty() && state.imageAttachment == null
+        if (preview != null && !folded) {
             Box(Modifier.padding(start = 6.dp, top = 4.dp)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Image(
@@ -486,10 +489,16 @@ private fun Composer(
                 }
                 Box(
                     Modifier.align(Alignment.TopEnd).padding(start = 40.dp).size(20.dp).clip(CircleShape).background(text)
-                        .clickable { state.attach = Attach.NONE; state.refreshPreview(capture) },
+                        .clickable { state.chooseNoteAttachment(Attach.NONE, capture) },
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.Outlined.Close, "不附带", tint = if (palette.isDark) Color.Black else Color.White, modifier = Modifier.size(12.dp)) }
             }
+        }
+        if (state.readingImage) {
+            Text(stringResource(R.string.nn_loading_clipboard_image), color = dim, fontSize = 12.sp)
+        }
+        state.attachmentError?.let {
+            Text(stringResource(it), color = text, fontSize = 12.sp)
         }
         Row(verticalAlignment = Alignment.Bottom) {
             Box(Modifier.height(FIELD_ROW), contentAlignment = Alignment.Center) {
@@ -497,9 +506,16 @@ private fun Composer(
                 com.xnotes.ui.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(
                         text = { Text("附带笔记（选区或整页）") },
-                        onClick = { menu = false; state.attach = Attach.AUTO; state.refreshPreview(capture) },
+                        onClick = { menu = false; state.chooseNoteAttachment(Attach.AUTO, capture) },
                     )
-                    DropdownMenuItem(text = { Text("不附带") }, onClick = { menu = false; state.attach = Attach.NONE; state.refreshPreview(capture) })
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.nn_paste_clipboard_image)) },
+                        onClick = { menu = false; state.pasteImage(reportMissing = true) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("不附带") },
+                        onClick = { menu = false; state.chooseNoteAttachment(Attach.NONE, capture) },
+                    )
                 }
             }
             if (folded && state.attach == Attach.AUTO && preview != null) Box(Modifier.height(FIELD_ROW), contentAlignment = Alignment.Center) {
@@ -514,7 +530,7 @@ private fun Composer(
                     )
                     Text(preview.label, color = text, fontSize = 12.sp, modifier = Modifier.padding(start = 6.dp))
                     Box(
-                        Modifier.size(24.dp).clip(CircleShape).clickable { state.attach = Attach.NONE; state.refreshPreview(capture) },
+                        Modifier.size(24.dp).clip(CircleShape).clickable { state.chooseNoteAttachment(Attach.NONE, capture) },
                         contentAlignment = Alignment.Center,
                     ) { Icon(Icons.Outlined.Close, "不附带", tint = dim, modifier = Modifier.size(14.dp)) }
                 }
@@ -523,7 +539,11 @@ private fun Composer(
                 value = state.input,
                 onValueChange = { state.input = it },
                 placeholder = { Text("询问", fontSize = 16.sp, color = dim) },
-                modifier = Modifier.weight(1f).heightIn(max = 160.dp),
+                modifier = Modifier.weight(1f).heightIn(max = 160.dp).onPreviewKeyEvent { event ->
+                    val key = event.nativeKeyEvent
+                    key.action == android.view.KeyEvent.ACTION_DOWN && key.isCtrlPressed &&
+                        key.keyCode == android.view.KeyEvent.KEYCODE_V && state.pasteImage(reportMissing = false)
+                },
                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, color = text),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
@@ -534,8 +554,8 @@ private fun Composer(
             val busy = state.busy
             Box(Modifier.height(FIELD_ROW), contentAlignment = Alignment.Center) { Box(
                 Modifier.padding(end = 2.dp).size(40.dp).clip(CircleShape)
-                    .background(if (busy) text else accent)
-                    .clickable { if (busy) state.stop() else state.send(null, capture) },
+                    .background(if (busy) text else accent.copy(alpha = if (state.readingImage) 0.45f else 1f))
+                    .clickable(enabled = busy || !state.readingImage) { if (busy) state.stop() else state.send(null, capture) },
                 contentAlignment = Alignment.Center,
             ) {
                 if (busy) Icon(Icons.Filled.Stop, "停止", tint = if (palette.isDark) Color.Black else Color.White, modifier = Modifier.size(18.dp))

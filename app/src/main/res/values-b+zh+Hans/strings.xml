@@ -12,7 +12,14 @@
     <string name="tool_pan">平移</string>
     <string name="tool_select">选择</string>
     <string name="tool_lasso">套索</string>
-    <string name="tool_screenshot">截图</string>
+    <string name="tool_screenshot">矩形截图</string>
+    <string name="nn_screenshot_hint">拖动框选要截取的区域</string>
+    <string name="nn_open_scratch">分屏打开草稿</string>
+    <string name="nn_insert_capture_beside">插入到另一侧</string>
+    <string name="nn_attach_capture_ai">添加到 AI 助手</string>
+    <string name="nn_clipboard_image">剪贴板图片</string>
+    <string name="nn_paste_clipboard_image">粘贴剪贴板图片</string>
+    <string name="nn_loading_clipboard_image">正在读取剪贴板图片…</string>
     <string name="tool_wand">消失墨迹</string>
     <string name="tool_tape">胶带</string>
     <string name="tool_insert_space">插入空白</string>

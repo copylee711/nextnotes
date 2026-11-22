@@ -1112,6 +1112,10 @@ private fun EditorScreen(
                 BackHandler(enabled = focused.editingField == null && !focused.flowEditingActive) {
                     guarded(focused) { focused.goHome() }
                 }
+                // NextNotes: leave the capture tool before Back closes the document.
+                BackHandler(enabled = !focused.canvasOpen && focused.tool == com.xnotes.core.tools.Tool.SCREENSHOT) {
+                    focused.dismissScreenshot()
+                }
             }
 
             val actions = PaneActions(
@@ -1121,6 +1125,15 @@ private fun EditorScreen(
                     guardedAll { editor.goHomeAll() }
                 },
                 onClosePane = { pane -> guarded(pane) { pane.goHome() } },
+                onOpenScratch = { pdf ->
+                    // NextNotes: keep the PDF and its viewport live while the other pane starts a note.
+                    if (!editor.inSplit) {
+                        val scratch = if (pdf === editor) editor.secondaryPane() else editor
+                        editor.splitRatio = 0.5f
+                        scratch.newNote()
+                        editor.focusPane(scratch.pane)
+                    }
+                },
                 onInsertImage = { pane, at ->
                     pendingInsert = PendingInsert(pane, at)
                     insertImageLauncher.launch(arrayOf("image/*"))
@@ -1420,6 +1433,7 @@ private class PaneActions(
     val onOpenBackstage: () -> Unit,
     /** Close just this pane, leaving the other one to fill the window. */
     val onClosePane: (Editor) -> Unit,
+    val onOpenScratch: (Editor) -> Unit, // NextNotes
     val onInsertImage: (Editor, com.xnotes.core.geometry.Pt?) -> Unit,
     val onInsertCanvasImage: (Editor, com.xnotes.core.geometry.Pt?) -> Unit,
     /** Take a photo with the camera app and place it like an inserted picture, on the canvas when [Editor.canvasOpen]. */
@@ -1685,6 +1699,7 @@ private fun EditorPane(
                         onAddStickers = actions.onAddStickers,
                         onClosePane = onClose,
                         onImportTemplate = actions.onImportTemplate,
+                        onOpenScratch = if (editor.hasPdf && !closable) ({ actions.onOpenScratch(editor) }) else null,
                         onInsertAudio = { actions.onInsertAudio(editor) },
                         onRecordAudio = { actions.onRecordAudio(editor) },
                         onTakePhoto = { actions.onTakePhoto(editor) },

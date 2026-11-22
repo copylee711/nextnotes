@@ -18,8 +18,9 @@ object SystemClipboard {
         val clip = cm.primaryClip ?: return null
         if (clip.itemCount == 0) return null
         val uri = clip.getItemAt(0).uri ?: return null
-        val type = context.contentResolver.getType(uri)
-        val isImage = type?.startsWith("image/") == true || clip.description?.hasMimeType("image/*") == true
+        // NextNotes: prefer the clip's declared type, as the URI can come from another app.
+        val isImage = clip.description.hasMimeType("image/*") ||
+            context.contentResolver.getType(uri)?.startsWith("image/") == true
         return if (isImage) uri else null
     }
 
@@ -40,10 +41,10 @@ object SystemClipboard {
         val dir = java.io.File(context.cacheDir, "clipboard").apply { mkdirs() }
         dir.listFiles()?.forEach { it.delete() }
         val file = java.io.File(dir, "capture.png")
-        java.io.FileOutputStream(file).use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        check(java.io.FileOutputStream(file).use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) })
         val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        cm.setPrimaryClip(android.content.ClipData.newUri(context.contentResolver, label, uri))
+        cm.setPrimaryClip(android.content.ClipData(label, arrayOf("image/png"), android.content.ClipData.Item(uri)))
         true
     }.getOrDefault(false)
 

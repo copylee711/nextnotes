@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -51,6 +52,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
@@ -561,8 +563,7 @@ private fun StepDot(glyph: String, label: String, enabled: Boolean, onClick: () 
 }
 
 /**
- * The screenshot tool's floating action, shown above the frozen capture rectangle: a single
- * "Copy as image" button that renders the region and puts it on the system clipboard.
+ * The screenshot tool's floating actions, anchored to the frozen capture rectangle.
  */
 @Composable
 fun ScreenshotMenu(editor: Editor, onShare: (java.io.File) -> Unit) {
@@ -570,52 +571,56 @@ fun ScreenshotMenu(editor: Editor, onShare: (java.io.File) -> Unit) {
     val palette = LocalPalette.current
     val density = LocalDensity.current
 
-    val barHeightPx = with(density) { 44.dp.toPx() }
-    val barWidthPx = with(density) { 216.dp.toPx() }
-    val gap = with(density) { 10.dp.toPx() }
-    val centerX = ((rect.left + rect.right) / 2.0).toFloat()
-    val xPx = (centerX - barWidthPx / 2f).coerceAtLeast(with(density) { 8.dp.toPx() })
-    val yPx = if (rect.top.toFloat() - barHeightPx - gap > 0f) {
-        rect.top.toFloat() - barHeightPx - gap
-    } else {
-        rect.bottom.toFloat() + gap
-    }
-    Row(
-        modifier = Modifier
-            .offset(with(density) { xPx.toDp() }, with(density) { yPx.toDp() })
-            .clip(MaterialTheme.shapes.medium)
-            .background(palette.menuBg.toComposeColor())
-            .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.medium),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    // NextNotes: keep every action reachable near an edge or in a narrow split pane.
+    val beside = editor.sibling?.let { it.noteOpen && (!it.hasPdf || it.canvasOpen) } == true
+    val buttonCount = if (beside) 4 else 3
+    BoxWithConstraints {
+        val buttonSize = minOf(46.dp, maxWidth / buttonCount)
+        val barWidth = buttonSize * buttonCount
+        val left = with(density) { rect.center.x.toFloat().toDp() } - barWidth / 2
+        val above = with(density) { rect.top.toFloat().toDp() } - buttonSize - 8.dp
+        val below = with(density) { rect.bottom.toFloat().toDp() } + 8.dp
+        val top = if (above >= 0.dp) above else below
         Row(
-            Modifier.clickable { editor.copyScreenshotAsImage() }.padding(horizontal = 14.dp, vertical = 11.dp),
+            Modifier.offset(
+                left.coerceIn(0.dp, (maxWidth - barWidth).coerceAtLeast(0.dp)),
+                top.coerceIn(0.dp, (maxHeight - buttonSize).coerceAtLeast(0.dp)),
+            ).clip(MaterialTheme.shapes.medium)
+                .background(palette.menuBg.toComposeColor())
+                .border(1.dp, palette.border.toComposeColor(), MaterialTheme.shapes.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                XnotesIcons.copy,
-                contentDescription = stringResource(R.string.copy_as_image),
-                tint = palette.text.toComposeColor(),
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                stringResource(R.string.copy_as_image),
-                color = palette.text.toComposeColor(),
-                fontSize = 14.sp,
-                modifier = Modifier.padding(start = 8.dp),
-            )
+            ActionIcon(XnotesIcons.copy, stringResource(R.string.copy_as_image), size = buttonSize) {
+                editor.copyScreenshotAsImage()
+            }
+            if (beside) {
+                ActionIcon(XnotesIcons.paste, stringResource(R.string.nn_insert_capture_beside), size = buttonSize) {
+                    editor.insertScreenshotBeside()
+                }
+            }
+            ActionIcon(Icons.Outlined.AutoAwesome, stringResource(R.string.nn_attach_capture_ai), size = buttonSize) {
+                editor.attachScreenshotToAi()
+            }
+            ActionIcon(XnotesIcons.share, stringResource(R.string.share), size = buttonSize) {
+                editor.screenshotImageForShare()?.let(onShare)
+            }
         }
-        Box(Modifier.width(1.dp).height(24.dp).background(palette.border.toComposeColor()))
-        ActionIcon(XnotesIcons.share, stringResource(R.string.share)) { editor.screenshotImageForShare()?.let(onShare) }
     }
 }
 
 @Composable
-private fun ActionIcon(icon: ImageVector, desc: String, enabled: Boolean = true, shortcut: String? = null, onClick: () -> Unit) {
+private fun ActionIcon(
+    icon: ImageVector,
+    desc: String,
+    enabled: Boolean = true,
+    shortcut: String? = null,
+    size: Dp = 46.dp,
+    onClick: () -> Unit,
+) {
     val palette = LocalPalette.current
     val tint = palette.text.toComposeColor().let { if (enabled) it else it.copy(alpha = 0.35f) }
     Tooltip(desc, shortcut = shortcut) {
-        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(46.dp)) {
+        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(size)) {
             Icon(icon, contentDescription = desc, tint = tint, modifier = Modifier.size(22.dp))
         }
     }

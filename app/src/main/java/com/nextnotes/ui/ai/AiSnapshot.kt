@@ -1,6 +1,9 @@
 package com.nextnotes.ui.ai
 
+import android.content.ContentResolver
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.util.Base64
 import com.nextnotes.ai.Part
 import java.io.ByteArrayOutputStream
@@ -20,11 +23,26 @@ class AiSnapshot(
     /** How the picture is named beside the question: "选区", "第 3 页". */
     val label: String = kind.label,
 ) {
-    enum class Kind(val label: String) { SELECTION("选区"), VIEW("当前页面"), PAGE("整页") }
+    enum class Kind(val label: String) { SELECTION("选区"), VIEW("当前页面"), PAGE("整页"), IMAGE("图片") }
 
     companion object {
         private const val MAX_SIDE = 2048
         private const val PNG_LIMIT = 1_500_000
+
+        /** Decode a clipboard image at a bounded size before it enters the composer. */
+        fun fromClipboard(resolver: ContentResolver, uri: Uri, label: String): AiSnapshot? {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+            val longest = maxOf(bounds.outWidth, bounds.outHeight)
+            if (longest <= 0) return null
+            val options = BitmapFactory.Options().apply { inSampleSize = 1 }
+            while (longest / options.inSampleSize > MAX_SIDE) {
+                options.inSampleSize *= 2
+            }
+            val bitmap = resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+                ?: return null
+            return AiSnapshot(bitmap, Kind.IMAGE, label = label)
+        }
 
         /** A selection is shown with a margin round it: models misread or drop what touches the edge. */
         fun around(selection: com.xnotes.core.geometry.Rect): com.xnotes.core.geometry.Rect =

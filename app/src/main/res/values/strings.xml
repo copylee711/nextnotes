@@ -13,7 +13,14 @@
     <string name="tool_pan">Pan</string>
     <string name="tool_select">Select</string>
     <string name="tool_lasso">Lasso</string>
-    <string name="tool_screenshot">Screenshot</string>
+    <string name="tool_screenshot">Rectangle screenshot</string>
+    <string name="nn_screenshot_hint">Drag a rectangle to capture part of the page</string>
+    <string name="nn_open_scratch">Open scratch note in split view</string>
+    <string name="nn_insert_capture_beside">Insert into the other pane</string>
+    <string name="nn_attach_capture_ai">Attach to AI assistant</string>
+    <string name="nn_clipboard_image">Clipboard image</string>
+    <string name="nn_paste_clipboard_image">Paste clipboard image</string>
+    <string name="nn_loading_clipboard_image">Reading clipboard image…</string>
     <string name="tool_wand">Disappearing ink</string>
     <string name="tool_tape">Tape</string>
     <string name="tool_insert_space">Insert space</string>

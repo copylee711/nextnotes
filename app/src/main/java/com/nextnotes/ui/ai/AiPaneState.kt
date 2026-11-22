@@ -22,6 +22,8 @@ import com.nextnotes.ai.Part
 import com.nextnotes.ai.ProfileStore
 import com.nextnotes.ai.Prompts
 import com.nextnotes.ai.Role
+import com.xnotes.R
+import com.xnotes.platform.SystemClipboard
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -96,6 +98,14 @@ class AiPaneState(context: Context) {
     var settingsOpen by mutableStateOf(false)
     var input by mutableStateOf("")
     var attach by mutableStateOf(Attach.AUTO)
+        private set
+    var imageAttachment by mutableStateOf<AiSnapshot?>(null)
+        private set
+    var attachmentError by mutableStateOf<Int?>(null)
+        private set
+    var readingImage by mutableStateOf(false)
+        private set
+    private var imageRead: Job? = null
     val turns = mutableStateListOf<AiTurn>()
     var busy by mutableStateOf(false)
         private set
@@ -172,6 +182,7 @@ class AiPaneState(context: Context) {
      */
     fun bindNote(key: String?) {
         if (key == noteKey) return
+        resetImageAttachment()
         stop()
         persist()
         turns.clear()
@@ -265,7 +276,56 @@ class AiPaneState(context: Context) {
     }
 
     fun refreshPreview(capture: () -> AiSnapshot?) {
-        preview = if (attach == Attach.NONE) null else capture()
+        preview = imageAttachment ?: if (attach == Attach.AUTO) capture() else null
+    }
+
+    fun chooseNoteAttachment(mode: Attach, capture: () -> AiSnapshot?) {
+        resetImageAttachment()
+        attach = mode
+        refreshPreview(capture)
+    }
+
+    private fun resetImageAttachment() {
+        imageRead?.cancel()
+        imageRead = null
+        readingImage = false
+        attachmentError = null
+        if (imageAttachment != null) preview = null
+        imageAttachment = null
+    }
+
+    fun attachImage(snapshot: AiSnapshot) {
+        resetImageAttachment()
+        imageAttachment = snapshot
+        preview = snapshot
+    }
+
+    /** Read the clipboard URI while the editor has focus, then decode it off the UI thread. */
+    fun pasteImage(reportMissing: Boolean): Boolean {
+        val uri = runCatching { SystemClipboard.imageUri(app) }.getOrNull()
+        if (uri == null) {
+            if (reportMissing) attachmentError = R.string.err_clipboard_no_image
+            return false
+        }
+        imageRead?.cancel()
+        attachmentError = null
+        readingImage = true
+        imageRead = scope.launch {
+            val image = withContext(Dispatchers.IO) {
+                runCatching {
+                    AiSnapshot.fromClipboard(app.contentResolver, uri, app.getString(R.string.nn_clipboard_image))
+                }.getOrNull()
+            }
+            if (image != null) {
+                imageAttachment = image
+                preview = image
+            } else {
+                attachmentError = R.string.err_read_image
+            }
+            readingImage = false
+            imageRead = null
+        }
+        return true
     }
 
     fun toggle(capture: () -> AiSnapshot?) {
@@ -386,7 +446,7 @@ class AiPaneState(context: Context) {
      * so the AI sees the page as it is now, selection first.
      */
     fun send(question: String? = null, capture: () -> AiSnapshot?) {
-        if (busy) return
+        if (busy || readingImage) return
         val profile = profiles.active()
         if (profile == null) {
             settingsOpen = true
@@ -394,11 +454,16 @@ class AiPaneState(context: Context) {
         }
         val text = (question ?: input).trim().ifEmpty { Prompts.defaultQuestion }
         if (question == null) input = ""
-        val snapshot = if (attach == Attach.AUTO) capture() else null
-        preview = snapshot
+        val snapshot = imageAttachment ?: if (attach == Attach.AUTO) capture() else null
+        if (imageAttachment != null) {
+            resetImageAttachment()
+            attach = Attach.NONE
+        } else {
+            preview = snapshot
+        }
 
         val userTurn = AiTurn(Role.USER, text, snapshot?.bitmap, snapshot?.label)
-        val answer = AiTurn(Role.ASSISTANT, "").apply { streaming = true; source = snapshot }
+        val answer = AiTurn(Role.ASSISTANT, "").apply { streaming = true; source = snapshot?.takeIf { it.region != null } }
         // The history goes as text; only this turn carries a picture, which keeps requests small.
         val history = turns.filter { it.error == null && it.text.isNotBlank() }.map {
             if (it.role == Role.USER) ChatMessage.user(it.text) else ChatMessage.assistant(it.text)

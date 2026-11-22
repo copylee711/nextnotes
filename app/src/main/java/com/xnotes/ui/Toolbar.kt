@@ -98,6 +98,7 @@ fun Toolbar(
     onInsertAudio: () -> Unit = {},
     onRecordAudio: () -> Unit = {},
     onTakePhoto: () -> Unit = {},
+    onOpenScratch: (() -> Unit)? = null, // NextNotes
 ) {
     // The five stroke tools use the designed vector drawables (res/drawable/ic_stroke_*),
     // tinted at the call site like every other icon; the rest use the built-in line set.
@@ -124,7 +125,27 @@ fun Toolbar(
     var switcherIndex by remember { mutableStateOf<Int?>(null) }
     var renaming by remember { mutableStateOf(false) }
     // Pinned outside the scrolling strip so closing a split pane is always one tap away.
-    ToolbarFrame(armed = editor.tool, trailing = onClosePane?.let { { ClosePaneButton(it) } }) {
+    // NextNotes: PDF study actions stay visible even when the pen tray needs to scroll.
+    val pinScreenshot = editor.hasPdf && editor.toolbarLayout.visibleSections.none { section ->
+        section.visibleEntries.any { it.item == ToolbarItem.SCREENSHOT }
+    }
+    ToolbarFrame(armed = editor.tool, trailing = {
+        if (pinScreenshot) {
+            Rule()
+            ToolbarIcon(
+                XnotesIcons.scissors, stringResource(R.string.tool_screenshot),
+                active = editor.tool == Tool.SCREENSHOT,
+                hint = stringResource(R.string.nn_screenshot_hint),
+            ) {
+                if (editor.tool == Tool.SCREENSHOT) editor.dismissScreenshot()
+                else editor.selectTool(Tool.SCREENSHOT)
+            }
+        }
+        if (onOpenScratch != null) {
+            ToolbarIcon(XnotesIcons.split, stringResource(R.string.nn_open_scratch), onClick = onOpenScratch)
+        }
+        if (onClosePane != null) ClosePaneButton(onClosePane)
+    }) {
         // The bar is driven by the user-customisable layout; separators sit between non-empty
         // sections, and each item dispatches to its renderer (see ToolbarItemView).
         editor.toolbarLayout.visibleSections.forEachIndexed { si, section ->

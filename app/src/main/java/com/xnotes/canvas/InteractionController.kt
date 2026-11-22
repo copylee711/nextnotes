@@ -829,9 +829,8 @@ class InteractionController(
             // off the selection it still pans.
             toolType == MotionEvent.TOOL_TYPE_FINGER && !fingerDraws && tool.fingerPansWhenOff &&
                 fingerHitsSelection(content) -> Tool.SELECT
-            // Likewise a frozen capture: a finger on a handle or inside it adjusts it.
-            toolType == MotionEvent.TOOL_TYPE_FINGER && !fingerDraws && tool == Tool.SCREENSHOT &&
-                fingerHitsCapture(content) -> Tool.SCREENSHOT
+            // NextNotes: explicitly arming the screenshot tool also lets a finger draw the rectangle.
+            toolType == MotionEvent.TOOL_TYPE_FINGER && tool == Tool.SCREENSHOT -> Tool.SCREENSHOT
             // A finger otherwise pans instead of drawing/selecting/shaping/erasing (text stays usable by finger).
             toolType == MotionEvent.TOOL_TYPE_FINGER && !fingerDraws && tool.fingerPansWhenOff -> Tool.PAN
             else -> tool
@@ -2105,12 +2104,6 @@ class InteractionController(
         beginScreenshot(content)
     }
 
-    /** Whether [content] lands on the frozen capture's handles or inside it. */
-    private fun fingerHitsCapture(content: Pt): Boolean {
-        val rect = screenshotRect ?: return false
-        return ResizeMath.hitHandle(ResizeMath.boxHandles(rect), content, HANDLE_HIT / state.zoom) != null || rect.contains(content)
-    }
-
     /** Drag a handle of the frozen capture: the edge it moves follows the pen, the opposite one stays. */
     private fun extendScreenshotResize(content: Pt) {
         val start = shotStart ?: return
@@ -2188,8 +2181,7 @@ class InteractionController(
     /** After a capture is copied, return to the previous pen, mirroring the eraser's switch-back. */
     fun switchBackAfterScreenshot() {
         if (tool != Tool.SCREENSHOT) return
-        val back = toolBeforeScreenshot ?: return
-        if (back.isStroke) setTool(back)
+        toolBeforeScreenshot?.let(::setTool) // NextNotes: restore pan and other reading tools too.
     }
 
     private fun refreshScreenshotMenu() {
