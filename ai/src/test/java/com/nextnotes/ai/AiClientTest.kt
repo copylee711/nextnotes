@@ -182,6 +182,14 @@ class AiClientTest {
         assertEquals(2, calls)
     }
 
+    @Test fun eventsAreReadEvenWhenTheContentTypeHidesThem() {
+        reply = {
+            Triple(200, "application/json", "event: response.created\ndata: {\"type\":\"response.created\"}\n\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"好\"}\n\ndata: {\"type\":\"response.completed\"}\n\n")
+        }
+        val profile = AiProfile("p", "ChatGPT", Protocol.CHATGPT, "$base/v1", "gpt")
+        assertEquals("好", AiClient().stream(profile, "tok", "", listOf(ChatMessage.user("?")), "s").answer)
+    }
+
     @Test fun aSpentPlanSaysSo() {
         reply = {
             Triple(200, "text/event-stream", "data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"subscription_sharing_usage_limit_exceeded\"}}}\n\n")

@@ -95,11 +95,16 @@ class AiClient(
             val state = StreamState()
             val type = conn.contentType.orEmpty()
             conn.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-                if (type.contains("text/event-stream", ignoreCase = true)) {
+                // Some servers stream events without saying so in the content type: the first line tells.
+                var first: String? = reader.readLine()
+                while (first != null && first.isBlank()) first = reader.readLine()
+                val looksLikeEvents = first != null && (first.startsWith("event:") || first.startsWith("data:") || first.startsWith(":"))
+                if (type.contains("text/event-stream", ignoreCase = true) || looksLikeEvents) {
                     val sse = SseReader { event, data ->
                         wire.onEvent(event, data, state)
                         onUpdate(state.snapshot())
                     }
+                    first?.let { sse.line(it) }
                     while (!state.done) {
                         if (call.cancelled) break
                         val line = reader.readLine() ?: break
@@ -107,7 +112,7 @@ class AiClient(
                     }
                     sse.finish()
                 } else {
-                    val text = reader.readText()
+                    val text = (first ?: "") + "\n" + reader.readText()
                     val json = runCatching { JSONObject(text) }.getOrNull()
                         ?: throw AiException("无法解析服务返回的内容：${text.take(200)}")
                     wire.onFull(json, state)
