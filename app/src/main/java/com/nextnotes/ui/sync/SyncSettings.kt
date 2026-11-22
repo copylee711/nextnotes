@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
  * [root] is the notes folder that syncs; [onChanged] runs when a sync changed files here.
  */
 @Composable
-fun SyncSection(root: String?, onChanged: () -> Unit) {
+fun SyncSection(root: String?, showTitle: Boolean = true, onChanged: () -> Unit) {
     val context = LocalContext.current
     val palette = LocalPalette.current
     val dim = palette.textDim.toComposeColor()
@@ -48,7 +48,7 @@ fun SyncSection(root: String?, onChanged: () -> Unit) {
     var version by remember { mutableStateOf(0) }
     val config = remember(version) { SyncCenter.config(context) }
 
-    Text("多设备同步", color = palette.text.toComposeColor(), fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+    if (showTitle) Text("多设备同步", color = palette.text.toComposeColor(), fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
     Text(
         "通过 WebDAV（如坚果云、Nextcloud、群晖或自建服务）在平板、手机和电脑之间同步笔记文件夹。两边都改过的笔记会保留两份，不会丢。",
         color = dim, fontSize = 12.sp,

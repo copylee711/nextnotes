@@ -1,5 +1,17 @@
 package com.xnotes.ui
 
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.NoteAdd
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.PictureAsPdf
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.TextFields
+import androidx.compose.material.icons.outlined.ViewSidebar
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Backup
+
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -58,6 +70,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -218,20 +231,29 @@ fun PreferencesPane(
             TextButton(onClick = { update(Preferences()) }) { Text(stringResource(R.string.reset_to_defaults), fontSize = 13.sp) }
         }
         Spacer(Modifier.height(12.dp))
+        // NextNotes: under the mist look, the sections listed beside the settings on a wide screen.
+        val mist = com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST
+        val anchors = remember { com.nextnotes.ui.settings.SectionAnchors() }
+        val categories = settingsCategories()
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        val wide = maxWidth >= 900.dp
+        Row(Modifier.fillMaxSize()) {
+        if (mist && wide) com.nextnotes.ui.settings.SettingsNav(categories, anchors, scrollState)
+        androidx.compose.runtime.CompositionLocalProvider(com.nextnotes.ui.settings.LocalSectionAnchors provides anchors) {
         Column(
             // Ending at the keyboard's edge scrolls a focused field up out from under it.
             Modifier.fillMaxSize().imePadding().verticalScroll(scrollState)
                 .onGloballyPositioned { viewport = it.boundsInRoot() }
                 // NextNotes: a readable column on a wide screen instead of settings strung along one edge.
                 .wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 720.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(if (mist) 6.dp else 14.dp),
         ) {
             SectionTitle(stringResource(R.string.pref_general))
             // NextNotes: the look comes first; the Material colour controls below only apply to its own look.
             SettingRow(stringResource(R.string.nn_style)) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     for ((id, label) in listOf(
-                        "sticker" to R.string.nn_style_sticker, "calm" to R.string.nn_style_calm,
+                        "mist" to R.string.nn_style_mist, "sticker" to R.string.nn_style_sticker, "calm" to R.string.nn_style_calm,
                         "cool" to R.string.nn_style_cool, "material" to R.string.nn_style_material,
                     )) {
                         Chip(stringResource(label), com.nextnotes.ui.theme.NnTheme.fromId(prefs.nnTheme).id == id) { update(prefs.copy(nnTheme = id)) }
@@ -277,7 +299,7 @@ fun PreferencesPane(
             }
             CheckRow(stringResource(R.string.pref_start_fullscreen), editor.fullscreen) { editor.setFullscreenPref(it) }
 
-            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionRule()
             SectionTitle(stringResource(R.string.pref_input))
             CheckRow(stringResource(R.string.pref_finger_draws), prefs.fingerDraws) { update(prefs.copy(fingerDraws = it)) }
             SettingRow(stringResource(R.string.pref_zoom_lock_pan)) {
@@ -334,7 +356,7 @@ fun PreferencesPane(
             }
             CheckRow(stringResource(R.string.pref_volume_keys_turn_pages), prefs.volumeKeysTurnPages) { update(prefs.copy(volumeKeysTurnPages = it)) }
 
-            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionRule()
             SectionTitle(stringResource(R.string.pref_new_notes))
             FieldLabel(stringResource(R.string.pref_filename_template))
             Text(
@@ -361,7 +383,7 @@ fun PreferencesPane(
                 fontSize = 12.sp,
             )
 
-            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionRule()
             SectionTitle(stringResource(R.string.pref_page))
             FieldLabel(stringResource(R.string.pref_default_page_size))
             SizeDropdown(prefs.defaultPageSize) { it?.let { size -> update(prefs.copy(defaultPageSize = size)) } }
@@ -407,7 +429,7 @@ fun PreferencesPane(
                 update(prefs.copy(pageColor = if (it) null else editor.swatches(SwatchRole.PAPER).first()))
             }
 
-            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionRule()
             SectionTitle(stringResource(R.string.pref_home_explorer))
             Text(
                 stringResource(R.string.pref_home_explorer_help),
@@ -499,13 +521,13 @@ fun PreferencesPane(
             CheckRow(stringResource(R.string.pref_show_folder_counts), prefs.showFolderCounts) { updateHome(prefs.copy(showFolderCounts = it)) }
             CheckRow(stringResource(R.string.pref_show_extensions), prefs.showExtensions) { updateHome(prefs.copy(showExtensions = it)) }
 
-            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionRule()
             SectionTitle(stringResource(R.string.pref_pdf_export))
             CheckRow(stringResource(R.string.pref_pdf_heading_bookmarks), prefs.pdfHeadingBookmarks) {
                 updateHome(prefs.copy(pdfHeadingBookmarks = it))
             }
 
-            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionRule()
             SectionTitle(stringResource(R.string.pref_performance))
             FieldLabel(stringResource(R.string.pref_max_cache_px, prefs.maxCacheResolution))
             Slider(
@@ -530,7 +552,7 @@ fun PreferencesPane(
             )
 
             if (editor.treeSitterAvailable) {
-                HorizontalDivider(color = palette.border.toComposeColor())
+                SectionRule()
                 SectionTitle(stringResource(R.string.pref_code_highlighting))
 
                 val langOptions = editor.scmLanguages().map { it to it }
@@ -563,7 +585,7 @@ fun PreferencesPane(
                 TextButton(onClick = { onImportCodeTheme() }) { Text(stringResource(R.string.import_theme), fontSize = 13.sp) }
             }
 
-            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionRule()
             SectionTitle(stringResource(R.string.pref_fonts))
             Text(
                 stringResource(R.string.pref_fonts_help),
@@ -586,7 +608,7 @@ fun PreferencesPane(
                 }
             }
 
-            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionRule()
             SectionTitle(stringResource(R.string.pref_toolbar))
             // The look, like the swatch count below, is one setting for both bars.
             val look = prefs.toolbarLook
@@ -708,10 +730,11 @@ fun PreferencesPane(
                 },
             )
 
-            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionRule()
             // NextNotes: syncing the notes folder through WebDAV.
-            com.nextnotes.ui.sync.SyncSection(editor.browseRoot) { editor.filesChangedOutside() }
-            HorizontalDivider(color = palette.border.toComposeColor())
+            SectionTitle(stringResource(R.string.nn_sync_title))
+            SettingsCard { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { com.nextnotes.ui.sync.SyncSection(editor.browseRoot, showTitle = false) { editor.filesChangedOutside() } } }
+            SectionRule()
             SectionTitle(stringResource(R.string.pref_backup))
             Text(stringResource(R.string.pref_backup_help), color = palette.textDim.toComposeColor(), fontSize = 12.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -719,6 +742,9 @@ fun PreferencesPane(
                 TextButton(onClick = { onBackup(false) }) { Text(stringResource(R.string.import_settings), fontSize = 13.sp) }
             }
             Spacer(Modifier.size(8.dp))
+        }
+        }
+        }
         }
     }
         // The dragged chip/section's floating copy: a pane-root sibling so the scroll never clips it.
@@ -760,7 +786,61 @@ fun PreferencesPane(
 
 @Composable
 private fun SectionTitle(text: String) {
+    // NextNotes: under the mist look a page-like heading, and the anchor the section list jumps to.
+    if (com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST) {
+        val anchors = com.nextnotes.ui.settings.LocalSectionAnchors.current
+        Text(
+            text, color = LocalPalette.current.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 22.sp,
+            modifier = Modifier.padding(top = 18.dp, bottom = 4.dp, start = 4.dp)
+                .onGloballyPositioned { c -> anchors?.top?.put(text, c.positionInParent().y.toInt()) },
+        )
+        return
+    }
     Text(text, color = LocalPalette.current.text.toComposeColor(), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+}
+
+/** NextNotes: between sections, a rule; under the mist look, where the cards already part them, just air. */
+@Composable
+private fun SectionRule() {
+    if (com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST) return
+    HorizontalDivider(color = LocalPalette.current.border.toComposeColor())
+}
+
+/** NextNotes: under the mist look, a setting sits on a white card; other looks keep it bare. */
+@Composable
+private fun SettingsCard(content: @Composable () -> Unit) {
+    if (com.nextnotes.ui.theme.LocalChrome.current.theme != com.nextnotes.ui.theme.NnTheme.MIST) return content()
+    Box(
+        Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+            .background(LocalPalette.current.panel.toComposeColor()).heightIn(min = 56.dp)
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) { content() }
+}
+
+/** NextNotes: the sections as the list beside the settings shows them, each with its icon tile. */
+@Composable
+private fun settingsCategories(): List<com.nextnotes.ui.settings.SettingsCategory> {
+    val dark = LocalPalette.current.isDark
+    val i = androidx.compose.material.icons.Icons.Outlined
+    val rows = listOf(
+        Triple(R.string.pref_general, i.Palette, 0xFF1F5FD6),
+        Triple(R.string.pref_input, i.Edit, 0xFF1F9D55),
+        Triple(R.string.pref_new_notes, i.NoteAdd, 0xFF7A8291),
+        Triple(R.string.pref_page, i.Description, 0xFFD9822B),
+        Triple(R.string.pref_home_explorer, i.Home, 0xFF3A7BD5),
+        Triple(R.string.pref_pdf_export, i.PictureAsPdf, 0xFFD93B3B),
+        Triple(R.string.pref_performance, i.Speed, 0xFF0E8A8A),
+        Triple(R.string.pref_fonts, i.TextFields, 0xFF5B6170),
+        Triple(R.string.pref_toolbar, i.ViewSidebar, 0xFF8A5A00),
+        Triple(R.string.nn_sync_title, i.Cloud, 0xFF3A7BD5),
+        Triple(R.string.pref_backup, i.Backup, 0xFF5B6170),
+    )
+    return rows.map { (res, icon, argb) ->
+        // A little deeper in the dark, so the white glyph still stands out against the graphite.
+        val tile = Color(argb).let { if (dark) Color(it.red * 0.85f, it.green * 0.85f, it.blue * 0.85f) else it }
+        com.nextnotes.ui.settings.SettingsCategory(stringResource(res), icon, tile)
+    }
 }
 
 @Composable
@@ -774,7 +854,7 @@ private fun FieldLabel(text: String) {
  * take one line on a tablet; a narrow screen stacks them.
  */
 @Composable
-private fun SettingRow(label: String, control: @Composable () -> Unit) {
+private fun SettingRow(label: String, control: @Composable () -> Unit) = SettingsCard {
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
         if (maxWidth < 560.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { FieldLabel(label); control() }
@@ -835,6 +915,23 @@ private fun CustomMaterialControls(prefs: Preferences, update: (Preferences) -> 
 @Composable
 private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
     val palette = LocalPalette.current
+    if (com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST) {
+        // NextNotes: a pill, filled with the accent when picked; no outline.
+        Box(
+            Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                .background(if (selected) palette.accent.toComposeColor() else palette.surface.toComposeColor())
+                .semantics { this.selected = selected }
+                .clickable(onClick = onClick)
+                .padding(horizontal = 14.dp, vertical = 7.dp),
+        ) {
+            Text(
+                label, color = if (selected) palette.onAccent.toComposeColor() else palette.text.toComposeColor(),
+                fontSize = 14.sp, maxLines = 1, softWrap = false,
+                fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            )
+        }
+        return
+    }
     Box(
         Modifier
             .clip(MaterialTheme.shapes.small)
@@ -981,7 +1078,7 @@ internal fun PageColorGridPopup(initial: Rgba?, onDismiss: () -> Unit, onPick: (
 }
 
 @Composable
-private fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) = SettingsCard {
     // NextNotes: the label on the left and a switch on the right, across the settings column.
     Row(
         verticalAlignment = Alignment.CenterVertically,
