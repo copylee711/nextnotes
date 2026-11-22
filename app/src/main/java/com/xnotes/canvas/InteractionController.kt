@@ -501,7 +501,7 @@ class InteractionController(
 
     /** NextNotes: a pen tip held still swaps the dot it started for the eraser. */
     val penHold by lazy {
-        PenHoldEraser(handler) { at ->
+        PenHoldEraser(handler, { state.devicePxPerDp }) { at -> // NextNotes
             if (mode != PointerMode.DRAW) return@PenHoldEraser
             cancelDwell()
             dwellEligible = false
@@ -680,7 +680,7 @@ class InteractionController(
             }
             MotionEvent.ACTION_MOVE -> {
                 if (tapCandidate && Pt(e.x.toDouble(), e.y.toDouble()).distanceTo(tapDownViewport) > TAP_SLOP) tapCandidate = false
-                penHold.onMove(Pt(e.x.toDouble(), e.y.toDouble()))
+                penHold.onMove(e, drawingPointerId) // NextNotes
                 handleMove(e)
             }
             MotionEvent.ACTION_POINTER_UP ->

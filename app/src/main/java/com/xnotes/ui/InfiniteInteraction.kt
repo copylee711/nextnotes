@@ -287,7 +287,7 @@ class InfiniteInteraction(
     private val handler = Handler(Looper.getMainLooper())
 
     /** NextNotes: a pen tip held still swaps the dot it started for the eraser. */
-    val penHold = PenHoldEraser(handler) { at ->
+    val penHold = PenHoldEraser(handler, devicePxPerDp) { at -> // NextNotes
         if (mode != CanvasPointerMode.DRAW) return@PenHoldEraser
         cancelDwell()
         dwellEligible = false
@@ -357,7 +357,7 @@ class InfiniteInteraction(
             }
             MotionEvent.ACTION_MOVE -> {
                 if (tapCandidate && Pt(e.x.toDouble(), e.y.toDouble()).distanceTo(tapDownAt) > TAP_SLOP_PX) tapCandidate = false
-                penHold.onMove(Pt(e.x.toDouble(), e.y.toDouble()))
+                penHold.onMove(e, drawingPointerId) // NextNotes
                 handleMove(e)
             }
             MotionEvent.ACTION_POINTER_UP ->

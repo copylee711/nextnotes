@@ -1,6 +1,7 @@
 package com.xnotes.canvas
 
 import android.os.Handler
+import android.view.MotionEvent
 import com.xnotes.core.geometry.Pt
 
 /**
@@ -8,7 +9,7 @@ import com.xnotes.core.geometry.Pt
  *
  * Some pens cannot report their side buttons to apps at all (the Xiaomi Smart Pen on the Pad 5
  * hands them to the system), so this is the eraser shortcut that works with any pen. It is armed
- * when a stylus starts an ink stroke and fires only if the tip has not left [SLOP] pixels of where
+ * when a stylus starts an ink stroke and fires only if the tip stays within [SLOP_DP] dp of where
  * it landed after [HOLD_MS]; any real movement first means writing, and disarms it. That keeps it
  * clear of the shape snap, which needs a stroke drawn before the pen holds still.
  *
@@ -18,12 +19,18 @@ import com.xnotes.core.geometry.Pt
  */
 class PenHoldEraser(
     private val handler: Handler,
+    private val density: () -> Double,
     private val onFire: (Pt) -> Unit,
 ) {
     /** Off in the preferences: never arms. */
     var enabled: Boolean = true
+        set(value) {
+            field = value
+            if (!value) end()
+        }
 
     private var anchor: Pt? = null
+    private var latest = Pt.ZERO
     private var pending: Runnable? = null
 
     /** Arm for a stylus ink press at [viewport]. */
@@ -31,19 +38,34 @@ class PenHoldEraser(
         end()
         if (!enabled) return
         anchor = viewport
+        latest = viewport
         val r = Runnable {
             pending = null
             anchor = null
-            onFire(viewport)
+            onFire(latest)
         }
         pending = r
         handler.postDelayed(r, HOLD_MS)
     }
 
-    /** The pen moved to [viewport]: past the slop it is writing, so stand down. */
-    fun onMove(viewport: Pt) {
+    /** Check batched samples too, so a stroke that loops back to its start still counts as writing. */
+    fun onMove(event: MotionEvent, pointerId: Int) {
         val a = anchor ?: return
-        if (viewport.distanceTo(a) > SLOP) end()
+        val index = event.findPointerIndex(pointerId)
+        if (index < 0) {
+            end()
+            return
+        }
+        val radius = SLOP_DP * density()
+        for (i in 0 until event.historySize) {
+            val point = Pt(event.getHistoricalX(index, i).toDouble(), event.getHistoricalY(index, i).toDouble())
+            if (point.distanceTo(a) > radius) {
+                end()
+                return
+            }
+        }
+        latest = Pt(event.getX(index).toDouble(), event.getY(index).toDouble())
+        if (latest.distanceTo(a) > radius) end()
     }
 
     /** The contact ended or became something else. */
@@ -54,10 +76,9 @@ class PenHoldEraser(
     }
 
     companion object {
-        /** How long the tip has to rest, matching the shape snap's dwell. */
-        const val HOLD_MS = 500L
+        private const val HOLD_MS = 300L
 
-        /** Pixels the tip may drift while resting; a little above the long press's, for nib jitter. */
-        const val SLOP = 8.0
+        /** Distance from the initial contact, independent of screen density and page zoom. */
+        private const val SLOP_DP = 6.0
     }
 }
