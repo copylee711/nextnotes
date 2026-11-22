@@ -1672,6 +1672,7 @@ private fun EditorPane(
                         com.xnotes.ui.CanvasDebugOverlay(canvas)
                         // NextNotes: a locked canvas shows how to unlock when a pinch tries to zoom.
                         ZoomLockHint(canvas.zoomLocked, canvas.lockedPinch, 0, canvas::toggleZoomLock)
+                        com.nextnotes.ui.canvas.ViewportChip(canvas, Modifier.align(Alignment.BottomStart)) // NextNotes
                     }
                 }
             } else {

@@ -27,4 +27,6 @@
     <string name="nn_all_notes">All notes</string>
     <string name="nn_pages">%d pages</string>
     <string name="nn_all">All</string>
+    <string name="nn_zoom_reset" formatted="false">Back to 100%</string>
+    <string name="nn_view_menu">View</string>
 </resources>

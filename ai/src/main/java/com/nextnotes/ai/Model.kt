@@ -6,7 +6,10 @@ enum class Protocol(val id: String) {
     OPENAI("openai"),
 
     /** Anthropic's Messages API, `POST {base}/v1/messages`. */
-    ANTHROPIC("anthropic");
+    ANTHROPIC("anthropic"),
+
+    /** OpenAI's Responses API on the user's ChatGPT plan, signed in with ChatGPT instead of a key. */
+    CHATGPT("chatgpt");
 
     companion object {
         fun fromId(id: String?): Protocol = entries.firstOrNull { it.id == id } ?: OPENAI

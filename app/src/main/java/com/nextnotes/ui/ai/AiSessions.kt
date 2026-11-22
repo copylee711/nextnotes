@@ -11,6 +11,9 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.MessageDigest
 
+/** An earlier conversation of a note: when it was put away, and its first question. */
+data class PastSession(val id: Long, val title: String)
+
 /** A conversation as kept on disk: its session id and its turns, pictures as JPEG bytes. */
 class SavedSession(val sessionId: String, val turns: List<SavedTurn>)
 
@@ -53,9 +56,55 @@ class AiSessions(private val dir: File) {
         fileFor(key).delete()
     }
 
+    // NextNotes: earlier conversations of a note, kept beside its current one as <hash>.<when>.json.
+
+    private fun pastFile(key: String, id: Long) = File(dir, "${sha1(key)}.$id.json")
+
+    /** Put the current conversation of [key] away among its earlier ones, keeping the newest [KEEP_PAST]. */
+    fun archive(key: String) {
+        val f = fileFor(key)
+        if (!f.exists()) return
+        var id = f.lastModified().coerceAtLeast(1)
+        while (pastFile(key, id).exists()) id++
+        f.renameTo(pastFile(key, id))
+        past(key).drop(KEEP_PAST).forEach { pastFile(key, it.id).delete() }
+    }
+
+    /** The earlier conversations of [key], newest first. */
+    fun past(key: String): List<PastSession> {
+        val prefix = sha1(key) + "."
+        val files = dir.listFiles { f -> f.name.startsWith(prefix) && f.name.endsWith(".json") && f.name.count { it == '.' } == 2 }.orEmpty()
+        return files.mapNotNull { f ->
+            val id = f.name.removePrefix(prefix).removeSuffix(".json").toLongOrNull() ?: return@mapNotNull null
+            val title = runCatching {
+                val turns = JSONObject(f.readText()).optJSONArray("turns")
+                (0 until (turns?.length() ?: 0)).map { turns!!.optJSONObject(it) }
+                    .firstOrNull { it?.optString("role") == "user" }?.optString("text")
+            }.getOrNull()
+            PastSession(id, title?.lines()?.firstOrNull()?.take(60).orEmpty())
+        }.sortedByDescending { it.id }
+    }
+
+    /** Make the earlier conversation [id] of [key] current again, putting the current one away. */
+    fun restore(key: String, id: Long): SavedSession? {
+        val chosen = pastFile(key, id)
+        if (!chosen.exists()) return null
+        archive(key)
+        chosen.renameTo(fileFor(key))
+        fileFor(key).setLastModified(System.currentTimeMillis())
+        return load(key)
+    }
+
+    fun deletePast(key: String, id: Long) {
+        pastFile(key, id).delete()
+    }
+
     companion object {
         /** The longest side a kept picture is shrunk to: enough to recognise the question by. */
         const val PICTURE_SIDE = 800
+
+        /** How many earlier conversations a note keeps. */
+        const val KEEP_PAST = 30
 
         fun encode(s: SavedSession): JSONObject = JSONObject()
             .put("version", 1)

@@ -30,6 +30,21 @@ class AiSessionsTest {
         assertNull(back.turns[1].image)
     }
 
+    @Test fun anEarlierConversationIsPutAwayAndComesBack() {
+        val store = AiSessions(tmp.root)
+        store.save("note", session)
+        store.archive("note")
+        assertNull(store.load("note"))
+        val past = store.past("note")
+        assertEquals(1, past.size)
+        assertEquals("检查过程", past[0].title)
+        store.save("note", SavedSession("sid-2", listOf(SavedTurn(Role.USER, "新问题"))))
+        assertEquals("sid-1", store.restore("note", past[0].id)!!.sessionId)
+        assertEquals(listOf("新问题"), store.past("note").map { it.title })
+        store.deletePast("note", store.past("note")[0].id)
+        assertEquals(0, store.past("note").size)
+    }
+
     @Test fun eachNoteKeepsItsOwn() {
         val store = AiSessions(tmp.root)
         store.save("a", session)

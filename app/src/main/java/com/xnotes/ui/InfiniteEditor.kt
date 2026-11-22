@@ -2256,6 +2256,14 @@ class InfiniteEditor(context: Context) : ToolPopupHost, SelectionMenuHost, LongP
         publishOverlay()
     }
 
+    /** NextNotes: back to 100%, about the middle of the view. */
+    fun resetZoom() {
+        if (zoomLocked) return
+        viewport.zoomAroundCenter(1.0)
+        onViewChanged()
+        view.publish()
+    }
+
     fun zoomBy(factor: Double) {
         if (zoomLocked) return
         viewport.zoomAroundCenter(viewport.zoom * factor)

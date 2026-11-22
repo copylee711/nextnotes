@@ -36,6 +36,7 @@ import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Add
@@ -176,6 +177,35 @@ private fun Header(state: AiPaneState, text: Color, dim: Color) {
             }
         }
         Spacer(Modifier.weight(1f))
+        Box {
+            var history by remember { mutableStateOf(false) }
+            PlainIcon(Icons.Outlined.History, "对话历史", dim) { state.loadPast(); history = true }
+            com.xnotes.ui.DropdownMenu(expanded = history, onDismissRequest = { history = false }) {
+                if (state.past.isEmpty()) {
+                    DropdownMenuItem(text = { Text("这篇笔记还没有更早的对话", color = dim) }, onClick = {}, enabled = false)
+                }
+                for (p in state.past) {
+                    DropdownMenuItem(
+                        text = {
+                            Column(Modifier.widthIn(min = 200.dp, max = 280.dp)) {
+                                Text(p.title.ifBlank { "（只有图片的提问）" }, color = text, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    android.text.format.DateUtils.getRelativeTimeSpanString(p.id).toString(),
+                                    color = dim, fontSize = 12.sp,
+                                )
+                            }
+                        },
+                        trailingIcon = {
+                            Box(
+                                Modifier.size(32.dp).clip(CircleShape).clickable { state.deletePast(p.id) },
+                                contentAlignment = Alignment.Center,
+                            ) { Icon(Icons.Outlined.Close, "删除这段对话", tint = dim, modifier = Modifier.size(16.dp)) }
+                        },
+                        onClick = { history = false; state.openPast(p.id) },
+                    )
+                }
+            }
+        }
         PlainIcon(Icons.Outlined.EditNote, "新对话", dim) { state.newConversation() }
         PlainIcon(Icons.Outlined.Close, "关闭", dim) { state.open = false }
     }
@@ -462,7 +492,7 @@ private fun Composer(
             }
         }
         Row(verticalAlignment = Alignment.Bottom) {
-            Box {
+            Box(Modifier.height(FIELD_ROW), contentAlignment = Alignment.Center) {
                 PlainIcon(Icons.Outlined.Add, "附带内容", dim) { menu = true }
                 com.xnotes.ui.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(
@@ -472,9 +502,9 @@ private fun Composer(
                     DropdownMenuItem(text = { Text("不附带") }, onClick = { menu = false; state.attach = Attach.NONE; state.refreshPreview(capture) })
                 }
             }
-            if (folded && state.attach == Attach.AUTO && preview != null) {
+            if (folded && state.attach == Attach.AUTO && preview != null) Box(Modifier.height(FIELD_ROW), contentAlignment = Alignment.Center) {
                 Row(
-                    Modifier.padding(bottom = 8.dp).clip(CircleShape).background(if (palette.isDark) panel else surface)
+                    Modifier.clip(CircleShape).background(if (palette.isDark) panel else surface)
                         .padding(start = 4.dp, end = 2.dp, top = 3.dp, bottom = 3.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -502,15 +532,18 @@ private fun Composer(
                 ),
             )
             val busy = state.busy
-            Box(
-                Modifier.padding(bottom = 4.dp, end = 2.dp).size(40.dp).clip(CircleShape)
+            Box(Modifier.height(FIELD_ROW), contentAlignment = Alignment.Center) { Box(
+                Modifier.padding(end = 2.dp).size(40.dp).clip(CircleShape)
                     .background(if (busy) text else accent)
                     .clickable { if (busy) state.stop() else state.send(null, capture) },
                 contentAlignment = Alignment.Center,
             ) {
                 if (busy) Icon(Icons.Filled.Stop, "停止", tint = if (palette.isDark) Color.Black else Color.White, modifier = Modifier.size(18.dp))
                 else Icon(Icons.Outlined.ArrowUpward, "发送", tint = onAccent, modifier = Modifier.size(20.dp))
-            }
+            } }
         }
     }
 }
+
+/** The height of the composer's one-line field, which its buttons centre on. */
+private val FIELD_ROW = 56.dp

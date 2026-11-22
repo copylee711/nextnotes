@@ -44,10 +44,14 @@ interface WireProtocol {
     /** Read a whole (non-streamed) response into [state]. */
     fun onFull(json: JSONObject, state: StreamState)
 
+    /** A plainer body to try once when [body] was refused with [status] and [error], or null. */
+    fun relaxed(body: JSONObject, status: Int, error: String): JSONObject? = null
+
     companion object {
         fun of(protocol: Protocol): WireProtocol = when (protocol) {
             Protocol.OPENAI -> OpenAiProtocol
             Protocol.ANTHROPIC -> AnthropicProtocol
+            Protocol.CHATGPT -> ResponsesProtocol
         }
     }
 }
@@ -190,6 +194,98 @@ object AnthropicProtocol : WireProtocol {
             }
         }
         state.done = true
+    }
+}
+
+/**
+ * OpenAI's Responses API as Sign in with ChatGPT serves it: always streamed, never stored, the
+ * system prompt as `instructions`, and none of the sampling or limit fields.
+ */
+object ResponsesProtocol : WireProtocol {
+    override fun endpoint(baseUrl: String): String {
+        val clean = baseUrl.trim().trimEnd('/').ifEmpty { ChatGptAuth.RESOURCE }
+        return if (clean.endsWith("/responses")) clean else "$clean/responses"
+    }
+
+    override fun headers(apiKey: String): Map<String, String> = mapOf("Authorization" to "Bearer $apiKey")
+
+    override fun body(profile: AiProfile, system: String, messages: List<ChatMessage>, stream: Boolean): JSONObject {
+        val input = JSONArray()
+        for (m in messages) {
+            if (m.role == Role.ASSISTANT) {
+                input.put(JSONObject().put("role", "assistant").put("content", m.text))
+                continue
+            }
+            val content = JSONArray()
+            for (p in m.parts) when (p) {
+                is Part.Text -> if (p.text.isNotEmpty()) content.put(JSONObject().put("type", "input_text").put("text", p.text))
+                is Part.Image -> content.put(
+                    JSONObject().put("type", "input_image").put("image_url", "data:${p.mimeType};base64,${p.base64}"),
+                )
+            }
+            input.put(JSONObject().put("role", "user").put("content", content))
+        }
+        return JSONObject()
+            .put("model", profile.model)
+            .put("input", input)
+            .put("store", false)
+            .put("stream", true)
+            .put("reasoning", JSONObject().put("summary", "auto"))
+            .apply { if (system.isNotBlank()) put("instructions", system) }
+    }
+
+    /** A model that will not summarize its reasoning still answers without being asked to. */
+    override fun relaxed(body: JSONObject, status: Int, error: String): JSONObject? =
+        if (status == 400 && body.has("reasoning") && error.contains("reasoning", ignoreCase = true)) {
+            JSONObject(body.toString()).apply { remove("reasoning") }
+        } else null
+
+    override fun onEvent(event: String?, data: String, state: StreamState) {
+        if (data.trim() == "[DONE]") {
+            state.done = true
+            return
+        }
+        val json = runCatching { JSONObject(data) }.getOrNull() ?: return
+        when (json.optString("type", event ?: "")) {
+            "response.output_text.delta" -> state.answer.append(json.stringOrEmpty("delta"))
+            "response.reasoning_summary_text.delta", "response.reasoning_text.delta" -> state.reasoning.append(json.stringOrEmpty("delta"))
+            "response.reasoning_summary_part.done" -> if (state.reasoning.isNotEmpty()) state.reasoning.append("\n\n")
+            "response.completed" -> state.done = true
+            "response.incomplete" -> {
+                state.truncated = true
+                state.done = true
+            }
+            "response.failed" -> throw AiException(planError(json.optJSONObject("response")?.optJSONObject("error")))
+            "error" -> throw AiException(planError(json.optJSONObject("error") ?: json))
+        }
+    }
+
+    override fun onFull(json: JSONObject, state: StreamState) {
+        json.optJSONObject("error")?.let { throw AiException(planError(it)) }
+        val output = json.optJSONArray("output") ?: throw AiException("响应里没有 output")
+        for (i in 0 until output.length()) {
+            val item = output.optJSONObject(i) ?: continue
+            val content = item.optJSONArray("content") ?: continue
+            for (j in 0 until content.length()) {
+                val c = content.optJSONObject(j) ?: continue
+                if (c.optString("type") == "output_text") state.answer.append(c.stringOrEmpty("text"))
+            }
+        }
+        state.done = true
+    }
+
+    /** What a plan-usage error means for the user, by its code. */
+    fun planError(error: JSONObject?): String {
+        val code = error?.optString("code").orEmpty()
+        val message = error?.optString("message").orEmpty()
+        return when (code) {
+            "subscription_sharing_usage_limit_exceeded" -> "ChatGPT 套餐的用量已经用完，可以到 chatgpt.com/settings/usage 查看"
+            "subscription_sharing_usage_unavailable", "subscription_sharing_user_unavailable" -> "ChatGPT 暂时不可用，稍后再试"
+            "subscription_sharing_user_not_eligible" -> "这个 ChatGPT 账号不能用套餐额度（需要 Plus 或 Pro）"
+            "subscription_sharing_invalid_user" -> "ChatGPT 登录已失效，请在 AI 设置里重新登录"
+            "subscription_sharing_unsupported_capability" -> "这个模型不支持本次请求的内容" + (error?.optString("param")?.takeIf { it.isNotBlank() }?.let { "（$it）" } ?: "")
+            else -> listOf(code, message).filter { it.isNotBlank() }.joinToString("：").ifBlank { "流式请求出错" }
+        }
     }
 }
 

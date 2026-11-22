@@ -12,7 +12,11 @@ import com.nextnotes.ai.AiCancelled
 import com.nextnotes.ai.AiClient
 import com.nextnotes.ai.AiException
 import com.nextnotes.ai.AiProfile
+import com.nextnotes.ai.ChatGptAccount
+import com.nextnotes.ai.ChatGptAuth
+import com.nextnotes.ai.ChatGptLogin
 import com.nextnotes.ai.ChatMessage
+import com.nextnotes.ai.Protocol
 import com.nextnotes.ai.KeyVault
 import com.nextnotes.ai.Part
 import com.nextnotes.ai.ProfileStore
@@ -67,6 +71,25 @@ class AiPaneState(context: Context) {
     val profiles = ProfileStore(app)
     val keys = KeyVault(app)
     private val client = AiClient(userAgent = "NextNotes/${versionName(app)}")
+
+    /** Signing in with ChatGPT; the account is kept sealed in the vault like a key. */
+    val chatgpt = ChatGptAuth(
+        read = { keys.get(CHATGPT_VAULT).ifEmpty { null } },
+        write = { if (it == null) keys.remove(CHATGPT_VAULT) else keys.put(CHATGPT_VAULT, it) },
+        userAgent = "NextNotes/${versionName(app)}",
+    )
+    var chatgptAccount by mutableStateOf<ChatGptAccount?>(null)
+        private set
+    var signingIn by mutableStateOf(false)
+        private set
+    var signInError by mutableStateOf<String?>(null)
+    /** The models the signed-in account may use, once asked: (id, display name). */
+    var chatgptModels by mutableStateOf<List<Pair<String, String>>>(emptyList())
+        private set
+    private var login: ChatGptLogin? = null
+
+    /** Earlier conversations of the open note, newest first, as last listed. */
+    val past = mutableStateListOf<PastSession>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     var open by mutableStateOf(false)
@@ -108,7 +131,7 @@ class AiPaneState(context: Context) {
         scope.launch {
             try {
                 val image = withContext(Dispatchers.Default) { shot.toPart() }
-                val key = keys.get(profile.id)
+                val key = keyFor(profile)
                 val final = withContext(Dispatchers.IO) {
                     client.stream(profile, key, "", listOf(ChatMessage.user(Prompts.transcribe, image)), UUID.randomUUID().toString(), thisCall) { d ->
                         scope.launch { if (transcript === t) t.text = d.answer.trim() }
@@ -158,23 +181,22 @@ class AiPaneState(context: Context) {
         scope.launch {
             val saved = withContext(Dispatchers.IO) { sessions.load(key) } ?: return@launch
             if (noteKey != key || turns.isNotEmpty()) return@launch
-            if (saved.sessionId.isNotEmpty()) sessionId = saved.sessionId
-            turns += saved.turns.map { t ->
-                AiTurn(t.role, t.text, t.image?.let { AiSessions.picture(it) }, t.label).apply {
-                    reasoning = t.reasoning
-                    notice = t.notice
-                    kept = t.image
-                }
-            }
+            showSaved(saved)
         }
     }
 
     /** Write the conversation down for its note, off the main thread. */
     private fun persist() {
         val key = noteKey ?: return
+        val write = saver(key)
+        scope.launch(Dispatchers.IO) { write() }
+    }
+
+    /** What writes the conversation as it is now for [key]; run it off the main thread. */
+    private fun saver(key: String): () -> Unit {
         val id = sessionId
         val kept = turns.filter { it.error == null && it.text.isNotBlank() }
-        scope.launch(Dispatchers.IO) {
+        return {
             runCatching {
                 sessions.save(key, SavedSession(id, kept.map { t ->
                     val image = t.kept ?: t.snapshot?.let { AiSessions.jpeg(it) }?.also { t.kept = it }
@@ -182,6 +204,55 @@ class AiPaneState(context: Context) {
                 }))
             }
         }
+    }
+
+    private fun showSaved(saved: SavedSession) {
+        turns.clear()
+        if (saved.sessionId.isNotEmpty()) sessionId = saved.sessionId
+        turns += saved.turns.map { t ->
+            AiTurn(t.role, t.text, t.kept(), t.label).apply {
+                reasoning = t.reasoning
+                notice = t.notice
+                kept = t.image
+            }
+        }
+    }
+
+    private fun SavedTurn.kept() = image?.let { AiSessions.picture(it) }
+
+    /** List the open note's earlier conversations into [past]. */
+    fun loadPast() {
+        val key = noteKey ?: return past.clear()
+        scope.launch {
+            val list = withContext(Dispatchers.IO) { sessions.past(key) }
+            if (noteKey == key) {
+                past.clear()
+                past += list
+            }
+        }
+    }
+
+    /** Go back to an earlier conversation; the one shown now is put away among them. */
+    fun openPast(id: Long) {
+        val key = noteKey ?: return
+        stop()
+        val write = saver(key)
+        turns.clear()
+        scope.launch {
+            val saved = withContext(Dispatchers.IO) {
+                write()
+                sessions.restore(key, id)
+            } ?: return@launch
+            if (noteKey != key) return@launch
+            showSaved(saved)
+            past.removeAll { it.id == id }
+        }
+    }
+
+    fun deletePast(id: Long) {
+        val key = noteKey ?: return
+        past.removeAll { it.id == id }
+        scope.launch(Dispatchers.IO) { sessions.deletePast(key, id) }
     }
 
     fun activeProfile(): AiProfile? {
@@ -207,11 +278,98 @@ class AiPaneState(context: Context) {
         refreshPreview(capture)
     }
 
+    /** Start over; the conversation so far is kept among the note's earlier ones. */
     fun newConversation() {
         stop()
+        noteKey?.let { key ->
+            val write = saver(key)
+            scope.launch(Dispatchers.IO) {
+                write()
+                sessions.archive(key)
+            }
+        }
         turns.clear()
-        noteKey?.let { key -> scope.launch(Dispatchers.IO) { sessions.delete(key) } }
         sessionId = UUID.randomUUID().toString()
+    }
+
+    // --- Sign in with ChatGPT ---
+
+    fun refreshAccount() {
+        scope.launch { chatgptAccount = withContext(Dispatchers.IO) { chatgpt.account() } }
+    }
+
+    /**
+     * Sign in in the browser, then add (or update) the ChatGPT service and make it the one in use.
+     * [context] opens the browser.
+     */
+    fun signInChatGpt(context: Context) {
+        if (signingIn) return
+        signingIn = true
+        signInError = null
+        scope.launch {
+            try {
+                val attempt = withContext(Dispatchers.IO) { chatgpt.begin() }.also { login = it }
+                context.startActivity(
+                    android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(attempt.url))
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+                withContext(Dispatchers.IO) { chatgpt.finish(attempt, SIGN_IN_WAIT_MS, "${app.packageName}://chatgpt") }
+                chatgptAccount = chatgpt.account()
+                val models = withContext(Dispatchers.IO) { runCatching { chatgpt.models() }.getOrDefault(emptyList()) }
+                chatgptModels = models
+                val existing = profiles.profiles().firstOrNull { it.protocol == Protocol.CHATGPT }
+                val model = existing?.model?.takeIf { m -> m.isNotBlank() && (models.isEmpty() || models.any { it.first == m }) }
+                    ?: models.firstOrNull()?.first.orEmpty()
+                val profile = AiProfile(existing?.id ?: CHATGPT_PROFILE, "ChatGPT", Protocol.CHATGPT, ChatGptAuth.RESOURCE, model)
+                profiles.save(profile)
+                profiles.setActive(profile.id)
+                profilesChanged()
+                if (model.isEmpty()) signInError = "已登录，但没有取到可用的模型，请稍后在 ChatGPT 服务里选择"
+            } catch (_: AiCancelled) {
+            } catch (e: AiException) {
+                signInError = e.message
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                signInError = e.message ?: e.javaClass.simpleName
+            } finally {
+                login?.cancel()
+                login = null
+                signingIn = false
+                chatgptAccount = withContext(Dispatchers.IO) { chatgpt.account() }
+            }
+        }
+    }
+
+    fun cancelSignIn() {
+        login?.cancel()
+    }
+
+    /** Sign out of ChatGPT and drop its service. */
+    fun signOutChatGpt() {
+        for (p in profiles.profiles()) if (p.protocol == Protocol.CHATGPT) profiles.delete(p.id)
+        profilesChanged()
+        scope.launch {
+            withContext(Dispatchers.IO) { chatgpt.signOut() }
+            chatgptAccount = chatgpt.account()
+            chatgptModels = emptyList()
+        }
+    }
+
+    /** Ask which models the signed-in account may use. */
+    fun loadChatGptModels() {
+        scope.launch {
+            try {
+                chatgptModels = withContext(Dispatchers.IO) { chatgpt.models() }
+            } catch (e: Exception) {
+                signInError = e.message ?: e.javaClass.simpleName
+            }
+        }
+    }
+
+    /** What a request to [profile] is authorized with: its key, or for ChatGPT a fresh token. */
+    private suspend fun keyFor(profile: AiProfile): String = withContext(Dispatchers.IO) {
+        if (profile.protocol == Protocol.CHATGPT) chatgpt.accessToken() else keys.get(profile.id)
     }
 
     fun stop() {
@@ -254,7 +412,7 @@ class AiPaneState(context: Context) {
                 val image = snapshot?.let { withContext(Dispatchers.Default) { it.toPart() } }
                 val parts = listOf(Part.Text(text)) + listOfNotNull(image)
                 val messages = history + ChatMessage(Role.USER, parts)
-                val key = keys.get(profile.id)
+                val key = keyFor(profile)
                 withContext(Dispatchers.IO) {
                     client.stream(profile, key, Prompts.system, messages, sessionId, thisCall) { delta ->
                         scope.launch {
@@ -300,7 +458,7 @@ class AiPaneState(context: Context) {
     /** Send a short text-only request to check a profile's address, model and key. */
     suspend fun test(profile: AiProfile, apiKey: String): String = withContext(Dispatchers.IO) {
         try {
-            val r = client.stream(profile, apiKey, "", listOf(ChatMessage.user("只回复两个字：成功")), UUID.randomUUID().toString())
+            val r = client.stream(profile, if (profile.protocol == Protocol.CHATGPT) keyFor(profile) else apiKey, "", listOf(ChatMessage.user("只回复两个字：成功")), UUID.randomUUID().toString())
             "连接成功：${r.answer.trim().take(40)}"
         } catch (e: AiException) {
             "连接失败：${e.message}"
@@ -315,6 +473,10 @@ class AiPaneState(context: Context) {
         if (p.maxTokens > 0) "可以在 AI 设置里调大“最大输出 tokens”，或留空用模型的默认值。" else "可以在 AI 设置里填一个更大的“最大输出 tokens”。"
 
     private companion object {
+        const val CHATGPT_VAULT = "chatgpt_account"
+        const val CHATGPT_PROFILE = "chatgpt"
+        const val SIGN_IN_WAIT_MS = 5 * 60_000
+
         fun versionName(context: Context): String = runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
         }.getOrNull() ?: "dev"

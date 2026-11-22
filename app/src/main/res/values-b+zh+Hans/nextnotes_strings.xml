@@ -27,4 +27,6 @@
     <string name="nn_all_notes">全部笔记</string>
     <string name="nn_pages">%d 页</string>
     <string name="nn_all">全部</string>
+    <string name="nn_zoom_reset" formatted="false">恢复 100%</string>
+    <string name="nn_view_menu">视图</string>
 </resources>

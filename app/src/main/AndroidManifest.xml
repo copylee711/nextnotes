@@ -71,6 +71,13 @@
                 <data android:mimeType="text/markdown" />
                 <data android:mimeType="text/x-markdown" />
             </intent-filter>
+            <!-- NextNotes: the page the browser is left on after signing in with ChatGPT leads back here. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${applicationId}" android:host="chatgpt" />
+            </intent-filter>
         </activity>
 
         <!-- The launcher entry: an alias, so the icon can switch; the old name keeps shortcuts working. -->

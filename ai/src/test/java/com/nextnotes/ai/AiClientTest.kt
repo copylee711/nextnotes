@@ -143,6 +143,58 @@ class AiClientTest {
         }
     }
 
+    @Test fun streamsAChatGptAnswerFromTheResponsesApi() {
+        reply = {
+            assertEquals("/v1/responses", it)
+            Triple(
+                200, "text/event-stream",
+                "event: response.reasoning_summary_text.delta\ndata: {\"type\":\"response.reasoning_summary_text.delta\",\"delta\":\"想一想\"}\n\n" +
+                    "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"答\"}\n\n" +
+                    "event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"案\"}\n\n" +
+                    "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{}}\n\n",
+            )
+        }
+        val profile = AiProfile("p", "ChatGPT", Protocol.CHATGPT, "$base/v1", "gpt")
+        val result = AiClient().stream(profile, "tok", "sys", listOf(ChatMessage.user("?", Part.Image("AAAA"))), "s")
+        assertEquals("答案", result.answer)
+        assertEquals("想一想", result.reasoning)
+        assertEquals("Bearer tok", lastHeaders["authorization"])
+        val body = org.json.JSONObject(lastBody)
+        assertEquals(false, body.getBoolean("store"))
+        assertEquals("sys", body.getString("instructions"))
+        val content = body.getJSONArray("input").getJSONObject(0).getJSONArray("content")
+        assertEquals("input_text", content.getJSONObject(0).getString("type"))
+        assertEquals("data:image/png;base64,AAAA", content.getJSONObject(1).getString("image_url"))
+    }
+
+    @Test fun aRefusedReasoningSummaryIsDroppedAndAskedAgain() {
+        var calls = 0
+        reply = {
+            calls++
+            if (org.json.JSONObject(lastBody).has("reasoning")) {
+                Triple(400, "application/json", "{\"error\":{\"code\":\"subscription_sharing_unsupported_capability\",\"param\":\"reasoning\"}}")
+            } else {
+                Triple(200, "text/event-stream", "data: {\"type\":\"response.output_text.delta\",\"delta\":\"好\"}\n\ndata: {\"type\":\"response.completed\"}\n\n")
+            }
+        }
+        val profile = AiProfile("p", "ChatGPT", Protocol.CHATGPT, "$base/v1", "gpt")
+        assertEquals("好", AiClient().stream(profile, "tok", "", listOf(ChatMessage.user("?")), "s").answer)
+        assertEquals(2, calls)
+    }
+
+    @Test fun aSpentPlanSaysSo() {
+        reply = {
+            Triple(200, "text/event-stream", "data: {\"type\":\"response.failed\",\"response\":{\"error\":{\"code\":\"subscription_sharing_usage_limit_exceeded\"}}}\n\n")
+        }
+        val profile = AiProfile("p", "ChatGPT", Protocol.CHATGPT, "$base/v1", "gpt")
+        try {
+            AiClient().stream(profile, "tok", "", listOf(ChatMessage.user("?")), "s")
+            fail("expected an error")
+        } catch (e: AiException) {
+            assertTrue(e.message!!.contains("用量已经用完"))
+        }
+    }
+
     @Test(expected = AiException::class)
     fun aMissingModelIsCaughtBeforeSending() {
         AiClient().stream(AiProfile("p", "o", Protocol.OPENAI, base, ""), "", "", emptyList(), "s")

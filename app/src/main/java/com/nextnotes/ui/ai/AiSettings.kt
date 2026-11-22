@@ -22,6 +22,11 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -55,9 +60,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun AiSettingsDialog(state: AiPaneState, onClose: () -> Unit) {
     var editing by remember { mutableStateOf<AiProfile?>(null) }
-    // Opening with nothing configured goes straight to adding one.
-    var adding by remember { mutableStateOf(state.profiles.profiles().isEmpty()) }
+    // Opening with nothing configured goes straight to adding one; with ChatGPT on offer, the list
+    // comes first so signing in is a choice beside adding a key.
+    var adding by remember { mutableStateOf(false) }
     val target = editing
+    if (target != null && target.protocol == Protocol.CHATGPT) {
+        ChatGptModelPicker(state, target) { editing = null; state.profilesChanged() }
+        return
+    }
     if (target != null || adding) {
         ProfileEditor(
             state,
@@ -81,6 +91,7 @@ fun AiSettingsDialog(state: AiPaneState, onClose: () -> Unit) {
         text = {
             com.nextnotes.ui.KeepBarsHidden()
             Column(Modifier.verticalScroll(rememberScrollState())) {
+                ChatGptCard(state)
                 for (p in list) {
                     Row(
                         Modifier.fillMaxWidth().clickable { state.profiles.setActive(p.id); state.profilesChanged() },
@@ -90,15 +101,23 @@ fun AiSettingsDialog(state: AiPaneState, onClose: () -> Unit) {
                         Column(Modifier.weight(1f)) {
                             Text(p.name, fontSize = 15.sp)
                             Text(
-                                "${p.model} · ${if (state.keys.has(p.id)) "已保存密钥" else "无密钥"}",
+                                "${p.model} · ${when {
+                                    p.protocol == Protocol.CHATGPT -> "使用 ChatGPT 套餐"
+                                    state.keys.has(p.id) -> "已保存密钥"
+                                    else -> "无密钥"
+                                }}",
                                 fontSize = 12.sp, color = palette.textDim.toComposeColor(),
                             )
                         }
                         IconButton(onClick = { editing = p }) { Icon(Icons.Outlined.Edit, "编辑") }
                         IconButton(onClick = {
-                            state.profiles.delete(p.id)
-                            state.keys.remove(p.id)
-                            state.profilesChanged()
+                            if (p.protocol == Protocol.CHATGPT) {
+                                state.signOutChatGpt()
+                            } else {
+                                state.profiles.delete(p.id)
+                                state.keys.remove(p.id)
+                                state.profilesChanged()
+                            }
                         }) { Icon(Icons.Outlined.Delete, "删除") }
                     }
                 }
@@ -110,6 +129,90 @@ fun AiSettingsDialog(state: AiPaneState, onClose: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = { adding = true }) { Text("新增服务") } },
         dismissButton = { TextButton(onClick = onClose) { Text("完成") } },
+    )
+}
+
+/** Signing in with ChatGPT: the way in, the wait for the browser, or the account in use. */
+@Composable
+private fun ChatGptCard(state: AiPaneState) {
+    val palette = LocalPalette.current
+    val context = LocalContext.current
+    val dim = palette.textDim.toComposeColor()
+    LaunchedEffect(Unit) { state.refreshAccount() }
+    val account = state.chatgptAccount
+    Column(
+        Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(RoundedCornerShape(16.dp))
+            .background(palette.surface.toComposeColor()).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text("ChatGPT 账号", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+        when {
+            state.signingIn -> {
+                Text("请在浏览器里完成登录，完成后回到这里。", fontSize = 13.sp, color = dim)
+                TextButton(onClick = { state.cancelSignIn() }) { Text("取消登录") }
+            }
+            account?.signedIn == true -> {
+                Text(
+                    (if (account.email.isNotBlank()) "已登录：${account.email}" else "已登录") + "\n提问会使用你的 ChatGPT 套餐额度",
+                    fontSize = 13.sp, color = dim,
+                )
+                Row {
+                    TextButton(onClick = {
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(com.nextnotes.ai.ChatGptAuth.USAGE_PAGE)),
+                            )
+                        }
+                    }) { Text("管理用量") }
+                    TextButton(onClick = { state.signOutChatGpt() }) { Text("退出登录") }
+                }
+            }
+            else -> {
+                Text("用 ChatGPT Plus 或 Pro 套餐的额度提问，不需要 API Key。", fontSize = 13.sp, color = dim)
+                Button(onClick = { state.signInChatGpt(context) }, modifier = Modifier.padding(top = 4.dp)) { Text("使用 ChatGPT 登录") }
+            }
+        }
+        state.signInError?.let { Text(it, fontSize = 12.sp, color = palette.danger.toComposeColor()) }
+    }
+}
+
+/** Which of the account's models the ChatGPT service asks. */
+@Composable
+private fun ChatGptModelPicker(state: AiPaneState, profile: AiProfile, onDone: () -> Unit) {
+    val palette = LocalPalette.current
+    LaunchedEffect(Unit) { state.loadChatGptModels() }
+    var model by remember { mutableStateOf(profile.model) }
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = { Text("ChatGPT 模型") },
+        text = {
+            com.nextnotes.ui.KeepBarsHidden()
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                val models = state.chatgptModels
+                if (models.isEmpty()) Text("正在读取可用的模型…", fontSize = 13.sp, color = palette.textDim.toComposeColor())
+                for ((id, name) in models) {
+                    Row(Modifier.fillMaxWidth().clickable { model = id }, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = model == id, onClick = { model = id })
+                        Column {
+                            Text(name, fontSize = 15.sp)
+                            if (name != id) Text(id, fontSize = 12.sp, color = palette.textDim.toComposeColor())
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    model, { model = it }, label = { Text("模型名称") }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+                state.signInError?.let { Text(it, fontSize = 12.sp, color = palette.danger.toComposeColor()) }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = model.isNotBlank(), onClick = {
+                state.profiles.save(profile.copy(model = model.trim()))
+                onDone()
+            }) { Text("保存") }
+        },
+        dismissButton = { TextButton(onClick = onDone) { Text("取消") } },
     )
 }
 
