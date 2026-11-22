@@ -25,8 +25,8 @@ android {
         applicationId = "com.nextnotes"
         minSdk = 26
         targetSdk = 36
-        versionCode = 108 // NextNotes numbering; xnotes 0.9.10 was 71
-        versionName = "0.6.1"
+        versionCode = 109 // NextNotes numbering; xnotes 0.9.10 was 71
+        versionName = "0.6.2"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
