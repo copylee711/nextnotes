@@ -441,7 +441,10 @@ private fun Composer(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         val preview = state.preview
-        if (state.attach == Attach.AUTO && preview != null) {
+        // Once the conversation is under way, the page folds into a small tag beside the + so the
+        // composer stays low and the answers keep the room.
+        val folded = state.turns.isNotEmpty()
+        if (state.attach == Attach.AUTO && preview != null && !folded) {
             Box(Modifier.padding(start = 6.dp, top = 4.dp)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Image(
@@ -467,6 +470,23 @@ private fun Composer(
                         onClick = { menu = false; state.attach = Attach.AUTO; state.refreshPreview(capture) },
                     )
                     DropdownMenuItem(text = { Text("不附带") }, onClick = { menu = false; state.attach = Attach.NONE; state.refreshPreview(capture) })
+                }
+            }
+            if (folded && state.attach == Attach.AUTO && preview != null) {
+                Row(
+                    Modifier.padding(bottom = 8.dp).clip(CircleShape).background(if (palette.isDark) panel else surface)
+                        .padding(start = 4.dp, end = 2.dp, top = 3.dp, bottom = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Image(
+                        preview.bitmap.asImageBitmap(), preview.label, contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(20.dp, 26.dp).clip(RoundedCornerShape(4.dp)).background(Color.White),
+                    )
+                    Text(preview.label, color = text, fontSize = 12.sp, modifier = Modifier.padding(start = 6.dp))
+                    Box(
+                        Modifier.size(24.dp).clip(CircleShape).clickable { state.attach = Attach.NONE; state.refreshPreview(capture) },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Outlined.Close, "不附带", tint = dim, modifier = Modifier.size(14.dp)) }
                 }
             }
             TextField(
