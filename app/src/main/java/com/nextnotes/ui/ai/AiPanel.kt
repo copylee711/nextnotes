@@ -1,10 +1,16 @@
 package com.nextnotes.ui.ai
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,27 +19,29 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.outlined.AddComment
-import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -42,39 +50,45 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nextnotes.ai.Prompts
-import com.nextnotes.ui.theme.sticker
-import com.nextnotes.ui.theme.stickerButton
-import androidx.compose.ui.draw.drawBehind
-import kotlinx.coroutines.launch
-import androidx.compose.material.icons.outlined.AddPhotoAlternate
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.foundation.layout.height
 import com.nextnotes.ai.Role
 import com.xnotes.ui.theme.LocalPalette
 import com.xnotes.ui.theme.toComposeColor
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 /**
- * The assistant panel beside the note. [capture] takes a picture of what the AI should see: the
- * selection if there is one, otherwise what is on screen. It runs when a question is sent, so the
- * AI reads the page as it is at that moment.
+ * The assistant, floating over the note like a chat app's window: the model at the top, the
+ * conversation, and a composer with the page that goes along. [capture] takes a picture of what
+ * the AI should see when a question is sent: the selection if there is one, else the whole page.
+ * [onDrag] moves the panel sideways by the pixels its handle was dragged.
  */
 @Composable
 fun AiPanel(
@@ -84,6 +98,7 @@ fun AiPanel(
     modifier: Modifier = Modifier,
     /** Puts an answer's marks on the page its picture came from; how many went on, or -1 if that page is gone. */
     onMark: (AiSnapshot, List<com.nextnotes.ai.Mark>) -> Int = { _, _ -> -1 },
+    onDrag: (Float) -> Unit = {},
 ) {
     val host = remember(onInsertImage) {
         ArtifactHost(onRevise = { state.input = "修改「${it.title}」：" }, onInsert = onInsertImage)
@@ -91,249 +106,201 @@ fun AiPanel(
     val palette = LocalPalette.current
     val text = palette.text.toComposeColor()
     val dim = palette.textDim.toComposeColor()
-    val border = palette.border.toComposeColor()
-    val accent = palette.accent.toComposeColor()
+    val panel = palette.panel.toComposeColor()
     val surface = palette.surface.toComposeColor()
-    val chrome = com.nextnotes.ui.theme.LocalChrome.current
+    val border = palette.border.toComposeColor()
 
-    // About a third of a tablet; nearly all of a phone, where side by side cannot work anyway.
+    // About a third of a tablet; nearly all of a phone.
     val screen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat()
-    val panelWidth = if (screen < 640f) screen * 0.92f else (screen * 0.36f).coerceIn(340f, 460f)
-    val tint = palette.materialColors.primaryContainer.toComposeColor()
-    val cardShape = RoundedCornerShape(24.dp)
-    // A card floating beside the page rather than a slab glued to the screen edge.
+    val panelWidth = if (screen < 640f) screen - 16f else (screen * 0.34f).coerceIn(360f, 440f)
+    val shape = RoundedCornerShape(28.dp)
     Column(
         modifier
+            .padding(12.dp)
             .width(panelWidth.dp)
             .fillMaxHeight()
-            // Opaque all the way to the note's edge: a see-through gap shows stale canvas pixels.
-            .background(palette.bg.toComposeColor())
-            .padding(start = 8.dp, top = 12.dp, end = 12.dp + chrome.drop, bottom = 12.dp + chrome.drop)
-            .sticker(chrome, palette.panel.toComposeColor(), cardShape)
-            .clip(cardShape),
+            .shadow(if (palette.isDark) 0.dp else 16.dp, shape, clip = false)
+            .clip(shape)
+            .background(panel)
+            .border(1.dp, border.copy(alpha = if (palette.isDark) 1f else 0.6f), shape),
     ) {
-        // Header: title, the active service, new chat, settings, close.
-        Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(34.dp).clip(CircleShape).background(accent), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.AutoAwesome, null, tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(18.dp))
-            }
-            Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                Text("AI 助手", color = text, fontSize = 17.sp, fontFamily = chrome.display)
-                val profile = state.activeProfile()
-                Text(
-                    profile?.let { it.model.ifBlank { it.name } } ?: "未配置服务",
-                    color = dim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.clickable { state.settingsOpen = true },
-                )
-            }
-            HeaderButton(Icons.Outlined.AddComment, "新对话", dim) { state.newConversation() }
-            HeaderButton(Icons.Outlined.Settings, "AI 设置", dim) { state.settingsOpen = true }
-            HeaderButton(Icons.Outlined.Close, "关闭", dim) { state.open = false }
-        }
-        Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).background(border).height(1.dp))
+        // The handle: dragged sideways, it carries the panel off whatever it covers.
+        Box(
+            Modifier.fillMaxWidth().height(18.dp).pointerInput(Unit) {
+                detectHorizontalDragGestures { change, amount -> change.consume(); onDrag(amount) }
+            },
+            contentAlignment = Alignment.Center,
+        ) { Box(Modifier.width(36.dp).height(4.dp).clip(CircleShape).background(dim.copy(alpha = 0.35f))) }
 
-        // The conversation.
-        val list = rememberLazyListState()
-        val lastText = state.turns.lastOrNull()?.text
-        LaunchedEffect(state.turns.size, lastText?.length) {
-            if (state.turns.isNotEmpty()) list.animateScrollToItem(state.turns.size - 1)
-        }
+        Header(state, text, dim)
+
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (state.turns.isEmpty()) {
-                EmptyHint(state, dim, accent)
+                EmptyHint(state, text, dim)
             } else {
-                LazyColumn(
-                    state = list,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(state.turns) { turn ->
-                        ProvideArtifactScope(ArtifactScope(host, turn.streaming)) {
-                            TurnView(turn, text, dim, surface, border, palette, onMark, onInsertImage)
-                        }
-                    }
-                }
+                Conversation(state, host, onMark, onInsertImage)
             }
         }
 
-        // What will be sent along, and how.
-        Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AttachChip(state.attach, accent, dim, tint) {
-                    state.attach = if (state.attach == Attach.AUTO) Attach.NONE else Attach.AUTO
-                    state.refreshPreview(capture)
-                }
-                val preview = state.preview
-                if (state.attach == Attach.AUTO && preview != null) {
-                    Spacer(Modifier.width(8.dp))
-                    Image(
-                        preview.bitmap.asImageBitmap(), "将发送的内容预览",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.size(40.dp, 30.dp).clip(RoundedCornerShape(6.dp)).border(1.dp, border, RoundedCornerShape(6.dp)).background(Color.White),
-                    )
-                    Text(preview.kind.label, color = dim, fontSize = 12.sp, modifier = Modifier.padding(start = 6.dp))
-                }
-                Spacer(Modifier.weight(1f))
-                if (state.attach == Attach.AUTO) HeaderButton(Icons.Outlined.Refresh, "刷新预览", dim) { state.refreshPreview(capture) }
-            }
-            // Soft pills on one line; a narrow panel scrolls them sideways.
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (action in Prompts.quickActions) {
-                    Text(
-                        action.label, color = text, fontSize = 13.sp,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(tint)
-                            .clickable(enabled = !state.busy) { state.send(action.prompt, capture) }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        maxLines = 1, softWrap = false,
-                    )
-                }
-            }
-            // One bar: the question and its send button.
-            Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(surface).border(1.dp, border, RoundedCornerShape(22.dp))
-                    .padding(start = 4.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                TextField(
-                    value = state.input,
-                    onValueChange = { state.input = it },
-                    placeholder = { Text("问问 AI，不输入直接发送也行", fontSize = 14.sp, color = dim) },
-                    modifier = Modifier.weight(1f).heightIn(max = 160.dp),
-                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, color = text),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = accent,
-                    ),
-                )
-                val busy = state.busy
-                Box(
-                    Modifier.padding(bottom = 4.dp).size(44.dp).clip(CircleShape).background(accent)
-                        .clickable { if (busy) state.stop() else state.send(null, capture) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        if (busy) Icons.Filled.Stop else Icons.AutoMirrored.Filled.Send,
-                        if (busy) "停止" else "发送",
-                        tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-        }
+        Composer(state, capture, text, dim, panel, surface, border)
     }
     if (state.settingsOpen) AiSettingsDialog(state) { state.settingsOpen = false }
 }
 
+/** The model in use, which switches it, then a new chat and close. */
 @Composable
-private fun HeaderButton(icon: ImageVector, desc: String, tint: Color, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(40.dp)) {
-        Icon(icon, desc, tint = tint, modifier = Modifier.size(20.dp))
+private fun Header(state: AiPaneState, text: Color, dim: Color) {
+    var menu by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box {
+            val profile = state.activeProfile()
+            Row(
+                Modifier.clip(CircleShape).clickable { menu = true }.padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    profile?.let { it.model.ifBlank { it.name } } ?: "未配置服务", color = text, fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 220.dp),
+                )
+                Icon(Icons.Outlined.ExpandMore, "切换模型", tint = dim, modifier = Modifier.size(18.dp))
+            }
+            com.xnotes.ui.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                val active = profile?.id
+                for (p in state.profiles.profiles()) {
+                    DropdownMenuItem(
+                        text = { Text(p.model.ifBlank { p.name }, fontWeight = if (p.id == active) FontWeight.Bold else FontWeight.Normal) },
+                        onClick = { state.profiles.setActive(p.id); state.profilesChanged(); menu = false },
+                    )
+                }
+                DropdownMenuItem(text = { Text("AI 设置…") }, onClick = { menu = false; state.settingsOpen = true })
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        PlainIcon(Icons.Outlined.EditNote, "新对话", dim) { state.newConversation() }
+        PlainIcon(Icons.Outlined.Close, "关闭", dim) { state.open = false }
     }
 }
 
 @Composable
-private fun AttachChip(attach: Attach, accent: Color, dim: Color, tint: Color, onClick: () -> Unit) {
-    val on = attach == Attach.AUTO
-    Text(
-        attach.label, fontSize = 12.sp, color = if (on) accent else dim,
-        modifier = Modifier
-            .clip(CircleShape)
-            .then(if (on) Modifier.background(tint) else Modifier.border(1.dp, dim, CircleShape))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-    )
+private fun PlainIcon(icon: ImageVector, desc: String, tint: Color, size: Int = 22, onClick: () -> Unit) {
+    IconButton(onClick = onClick, modifier = Modifier.size(42.dp)) {
+        Icon(icon, desc, tint = tint, modifier = Modifier.size(size.dp))
+    }
 }
 
 @Composable
-private fun EmptyHint(state: AiPaneState, dim: Color, accent: Color) {
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        val chrome = com.nextnotes.ui.theme.LocalChrome.current
-        val tint = LocalPalette.current.materialColors.primaryContainer.toComposeColor()
-        Box(Modifier.size(72.dp).clip(CircleShape).background(tint), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.AutoAwesome, null, tint = accent, modifier = Modifier.size(36.dp))
-        }
-        Spacer(Modifier.size(16.dp))
-        Text("有什么想问的？", color = LocalPalette.current.text.toComposeColor(), fontSize = 20.sp, fontFamily = chrome.display)
-        Spacer(Modifier.size(8.dp))
+private fun EmptyHint(state: AiPaneState, text: Color, dim: Color) {
+    val accent = LocalPalette.current.accent.toComposeColor()
+    Column(
+        Modifier.fillMaxSize().padding(28.dp), verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("有什么想问的？", color = text, fontSize = 24.sp, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.size(10.dp))
         if (state.activeProfile() == null) {
             Text("还没有配置 AI 服务", color = dim, fontSize = 14.sp)
-            Text(
-                "去配置", color = accent, fontSize = 14.sp,
-                modifier = Modifier.padding(top = 8.dp).clickable { state.settingsOpen = true },
-            )
+            Text("去配置", color = accent, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp).clickable { state.settingsOpen = true })
         } else {
-            Text(
-                "圈选一道题，或者直接提问。\nAI 会看到你的选区；没有选区时看到当前页面。",
-                color = dim, fontSize = 14.sp, lineHeight = 22.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
+            Text("圈选一道题再问会更准", color = dim, fontSize = 14.sp, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+/**
+ * The turns, kept at the newest while you stay at the bottom. Scroll up and it stays where you
+ * put it while the answer streams on; come back to the bottom and it follows again.
+ */
+@Composable
+private fun Conversation(
+    state: AiPaneState,
+    host: ArtifactHost,
+    onMark: (AiSnapshot, List<com.nextnotes.ai.Mark>) -> Int,
+    onInsertImage: (ByteArray) -> Unit,
+) {
+    val list = rememberLazyListState()
+    var follow by remember { mutableStateOf(true) }
+    LaunchedEffect(list) {
+        // A finger on the list stops the following; where the scroll comes to rest decides whether it resumes.
+        launch {
+            list.interactionSource.interactions.collect { if (it is DragInteraction.Start) follow = false }
+        }
+        snapshotFlow { list.isScrollInProgress }.collect { moving -> if (!moving) follow = !list.canScrollForward }
+    }
+    // A new question always brings the bottom back.
+    LaunchedEffect(state.turns.size) {
+        follow = true
+        if (state.turns.isNotEmpty()) list.scrollToItem(state.turns.lastIndex, Int.MAX_VALUE / 2)
+    }
+    val last = state.turns.lastOrNull()
+    LaunchedEffect(last) {
+        if (last == null) return@LaunchedEffect
+        snapshotFlow { last.text.length + last.reasoning.length }.collectLatest {
+            if (follow && list.canScrollForward) list.scrollToItem(state.turns.lastIndex, Int.MAX_VALUE / 2)
+        }
+    }
+    LazyColumn(
+        state = list,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        items(state.turns) { turn ->
+            ProvideArtifactScope(ArtifactScope(host, turn.streaming)) {
+                TurnView(turn, onMark, onInsertImage)
+            }
         }
     }
 }
 
 @Composable
 private fun TurnView(
-    turn: AiTurn, text: Color, dim: Color, surface: Color, border: Color, palette: com.xnotes.ui.theme.Palette,
+    turn: AiTurn,
     onMark: (AiSnapshot, List<com.nextnotes.ai.Mark>) -> Int,
     onInsertImage: (ByteArray) -> Unit,
 ) {
-    val chrome = com.nextnotes.ui.theme.LocalChrome.current
+    val palette = LocalPalette.current
+    val text = palette.text.toComposeColor()
+    val dim = palette.textDim.toComposeColor()
+    val surface = palette.surface.toComposeColor()
+    val border = palette.border.toComposeColor()
     if (turn.role == Role.USER) {
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             turn.snapshot?.let { bmp ->
                 Image(
-                    bmp.asImageBitmap(), turn.snapshotLabel, contentScale = ContentScale.Fit,
-                    modifier = Modifier.widthIn(max = 220.dp).heightIn(max = 140.dp)
-                        .clip(RoundedCornerShape(8.dp)).border(1.dp, border, RoundedCornerShape(8.dp)).background(Color.White),
+                    bmp.asImageBitmap(), turn.snapshotLabel, contentScale = ContentScale.Crop,
+                    modifier = Modifier.width(64.dp).height(82.dp).clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, border, RoundedCornerShape(12.dp)).background(Color.White),
                 )
-                Spacer(Modifier.size(4.dp))
             }
             Text(
-                turn.text, color = text, fontSize = 15.sp,
-                modifier = Modifier.widthIn(max = 300.dp)
-                    .sticker(chrome, palette.materialColors.secondaryContainer.toComposeColor(), RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                turn.text, color = text, fontSize = 15.sp, lineHeight = 22.sp,
+                modifier = Modifier.widthIn(max = 300.dp).clip(RoundedCornerShape(20.dp)).background(surface)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
             )
         }
         return
     }
-    Column(Modifier.fillMaxWidth()) {
-        if (turn.reasoning.isNotBlank()) {
-            var expanded by remember { mutableStateOf(false) }
-            Text(
-                if (expanded) "▾ 思考过程" else "▸ 思考过程", color = dim, fontSize = 12.sp,
-                modifier = Modifier.clickable { expanded = !expanded }.padding(bottom = 4.dp),
-            )
-            if (expanded) Text(turn.reasoning, color = dim, fontSize = 12.sp, lineHeight = 18.sp, modifier = Modifier.padding(bottom = 6.dp))
-        }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Thinking(turn, dim)
         // The marks block is for the page, not for reading.
         val (shown, marks) = remember(turn.text) { com.nextnotes.ai.Marks.split(turn.text) }
         // The answer as drawn, kept so it can go into the note as a picture, formulas and all.
-        val layer = androidx.compose.ui.graphics.rememberGraphicsLayer()
+        val layer = rememberGraphicsLayer()
         val paper = palette.panel.toComposeColor()
         if (turn.text.isNotEmpty()) {
             Box(Modifier.drawWithContent {
                 layer.record { drawRect(paper); this@drawWithContent.drawContent() }
                 drawLayer(layer)
             }) { MarkdownMath(shown, text, dim, surface, palette.text) }
-        } else if (turn.streaming) {
-            Text(if (turn.reasoning.isNotBlank()) "思考中…" else "正在读取笔记…", color = dim, fontSize = 14.sp)
         }
-        turn.notice?.let { Text(it, color = dim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
-        turn.error?.let { Text(it, color = palette.danger.toComposeColor(), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
-        val shot = turn.source
-        if (!turn.streaming && marks.isNotEmpty() && shot != null) {
-            MarkBar(turn, marks, shot, palette, onMark)
-        }
+        turn.notice?.let { Text(it, color = dim, fontSize = 12.sp) }
+        turn.error?.let { Text(it, color = palette.danger.toComposeColor(), fontSize = 13.sp) }
         if (!turn.streaming && turn.text.isNotEmpty()) {
             val clipboard = LocalClipboardManager.current
-            Row(Modifier.padding(top = 2.dp)) {
-                HeaderButton(Icons.Outlined.ContentCopy, "复制", dim) { clipboard.setText(AnnotatedString(turn.text)) }
-                val scope = androidx.compose.runtime.rememberCoroutineScope()
-                HeaderButton(Icons.Outlined.AddPhotoAlternate, "插入到笔记", dim) {
+            val scope = rememberCoroutineScope()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PlainIcon(Icons.Outlined.ContentCopy, "复制", dim, size = 18) { clipboard.setText(AnnotatedString(turn.text)) }
+                PlainIcon(Icons.Outlined.AddPhotoAlternate, "插入到笔记", dim, size = 19) {
                     scope.launch {
                         val shot = layer.toImageBitmap().asAndroidBitmap().copy(android.graphics.Bitmap.Config.ARGB_8888, false)
                         val bytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
@@ -342,7 +309,80 @@ private fun TurnView(
                         onInsertImage(bytes)
                     }
                 }
+                val source = turn.source
+                if (marks.isNotEmpty() && source != null) MarkBar(turn, marks, source, onMark)
             }
+        }
+    }
+}
+
+/**
+ * How the model got to its answer. While it thinks, its last few lines roll by under a running
+ * clock, so a long think never looks like a hang; once it answers, one line that opens the rest.
+ */
+@Composable
+private fun Thinking(turn: AiTurn, dim: Color) {
+    val palette = LocalPalette.current
+    val thinking = turn.streaming && turn.text.isEmpty()
+    if (turn.reasoning.isBlank()) {
+        if (thinking) Row(verticalAlignment = Alignment.CenterVertically) { Dots(); Text("正在读取笔记", color = dim, fontSize = 14.sp) }
+        return
+    }
+    if (thinking) {
+        var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+        LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(500) } }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Dots()
+                Text("思考中 · ${((now - turn.startedAt) / 1000).coerceAtLeast(0)} 秒", color = dim, fontSize = 14.sp)
+            }
+            Box(Modifier.fillMaxWidth().height(88.dp).clip(RoundedCornerShape(4.dp))) {
+                Row(Modifier.fillMaxSize()) {
+                    Box(Modifier.width(2.dp).fillMaxHeight().background(palette.border.toComposeColor()))
+                    Box(Modifier.fillMaxSize().padding(start = 12.dp)) {
+                        Text(
+                            turn.reasoning, color = dim, fontSize = 13.sp, lineHeight = 21.sp,
+                            // Measured at full height and pinned to the bottom: the newest lines show, the oldest scroll off the top.
+                            modifier = Modifier.fillMaxWidth().wrapContentHeight(Alignment.Bottom, unbounded = true).align(Alignment.BottomStart),
+                        )
+                    }
+                }
+                Box(
+                    Modifier.fillMaxWidth().height(32.dp).background(
+                        Brush.verticalGradient(listOf(palette.panel.toComposeColor(), Color.Transparent)),
+                    ),
+                )
+            }
+        }
+        return
+    }
+    var open by remember { mutableStateOf(false) }
+    val took = turn.thoughtMs?.let { "已思考 ${(it / 1000).coerceAtLeast(1)} 秒" } ?: "思考过程"
+    Row(
+        Modifier.clip(RoundedCornerShape(8.dp)).clickable { open = !open }.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(took, color = dim, fontSize = 14.sp)
+        Icon(if (open) Icons.Outlined.ExpandMore else Icons.Outlined.ChevronRight, null, tint = dim, modifier = Modifier.size(16.dp))
+    }
+    if (open) {
+        Row {
+            Box(Modifier.width(2.dp).heightIn(min = 20.dp).background(palette.border.toComposeColor()))
+            Text(turn.reasoning, color = dim, fontSize = 13.sp, lineHeight = 21.sp, modifier = Modifier.padding(start = 12.dp))
+        }
+    }
+}
+
+/** Three dots that breathe in turn: the model is at work. */
+@Composable
+private fun Dots() {
+    val accent = LocalPalette.current.accent.toComposeColor()
+    val t = rememberInfiniteTransition(label = "dots")
+    val phase by t.animateFloat(0f, 3f, infiniteRepeatable(tween(1200), RepeatMode.Restart), label = "phase")
+    Row(Modifier.padding(end = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        for (i in 0 until 3) {
+            val lit = 1f - (((phase - i) % 3f + 3f) % 3f) / 3f
+            Box(Modifier.size(6.dp).clip(CircleShape).background(accent.copy(alpha = 0.3f + 0.7f * lit)))
         }
     }
 }
@@ -353,26 +393,104 @@ private fun MarkBar(
     turn: AiTurn,
     marks: List<com.nextnotes.ai.Mark>,
     shot: AiSnapshot,
-    palette: com.xnotes.ui.theme.Palette,
     onMark: (AiSnapshot, List<com.nextnotes.ai.Mark>) -> Int,
 ) {
-    val accent = palette.accent.toComposeColor()
+    val palette = LocalPalette.current
     val dim = palette.textDim.toComposeColor()
     val placed = turn.placed
-    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        when {
-            placed == null -> Row(
-                Modifier.clip(CircleShape).background(accent)
-                    .clickable { turn.placed = onMark(shot, marks) }
-                    .padding(horizontal = 14.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Outlined.Draw, null, tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(16.dp))
-                Text("标到页面上（${marks.size} 处）", color = palette.onAccent.toComposeColor(), fontSize = 13.sp, modifier = Modifier.padding(start = 6.dp))
+    when {
+        placed == null -> Row(
+            Modifier.padding(start = 6.dp).clip(CircleShape).border(1.dp, palette.border.toComposeColor(), CircleShape)
+                .clickable { turn.placed = onMark(shot, marks) }
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(14.dp, 10.dp).border(1.6.dp, Color(0xFFD93B3B), CircleShape))
+            Text("标到页面上 · ${marks.size} 处", color = palette.text.toComposeColor(), fontSize = 13.sp, modifier = Modifier.padding(start = 6.dp))
+        }
+        placed > 0 -> Text("已标出 $placed 处，可撤销", color = dim, fontSize = 12.sp, modifier = Modifier.padding(start = 6.dp))
+        placed == 0 -> Text("这些位置不在页面上", color = dim, fontSize = 12.sp, modifier = Modifier.padding(start = 6.dp))
+        else -> Text("回到那篇笔记才能标出", color = dim, fontSize = 12.sp, modifier = Modifier.padding(start = 6.dp))
+    }
+}
+
+/**
+ * The question box: the page that goes along as a thumbnail on top (× to send none), a + to
+ * choose, the field, and send, which turns into stop while an answer streams.
+ */
+@Composable
+private fun Composer(
+    state: AiPaneState,
+    capture: () -> AiSnapshot?,
+    text: Color,
+    dim: Color,
+    panel: Color,
+    surface: Color,
+    border: Color,
+) {
+    val palette = LocalPalette.current
+    val accent = palette.accent.toComposeColor()
+    val onAccent = palette.onAccent.toComposeColor()
+    var menu by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(26.dp)
+    Column(
+        Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp, top = 6.dp)
+            .shadow(if (palette.isDark) 0.dp else 6.dp, shape, clip = false).clip(shape)
+            .background(if (palette.isDark) surface else panel).border(1.dp, border, shape)
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        val preview = state.preview
+        if (state.attach == Attach.AUTO && preview != null) {
+            Box(Modifier.padding(start = 6.dp, top = 4.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Image(
+                        preview.bitmap.asImageBitmap(), preview.label, contentScale = ContentScale.Crop,
+                        modifier = Modifier.width(48.dp).height(60.dp).clip(RoundedCornerShape(10.dp))
+                            .border(1.dp, border, RoundedCornerShape(10.dp)).background(Color.White),
+                    )
+                    Text(preview.label, color = dim, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
+                }
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(start = 40.dp).size(20.dp).clip(CircleShape).background(text)
+                        .clickable { state.attach = Attach.NONE; state.refreshPreview(capture) },
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Outlined.Close, "不附带", tint = if (palette.isDark) Color.Black else Color.White, modifier = Modifier.size(12.dp)) }
             }
-            placed > 0 -> Text("已在页面上标出 $placed 处，不满意可以撤销", color = dim, fontSize = 12.sp)
-            placed == 0 -> Text("这些位置不在页面上，没有标出", color = dim, fontSize = 12.sp)
-            else -> Text("截图来自另一篇笔记，回到那篇笔记才能标出", color = dim, fontSize = 12.sp)
+        }
+        Row(verticalAlignment = Alignment.Bottom) {
+            Box {
+                PlainIcon(Icons.Outlined.Add, "附带内容", dim) { menu = true }
+                com.xnotes.ui.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("附带笔记（选区或整页）") },
+                        onClick = { menu = false; state.attach = Attach.AUTO; state.refreshPreview(capture) },
+                    )
+                    DropdownMenuItem(text = { Text("不附带") }, onClick = { menu = false; state.attach = Attach.NONE; state.refreshPreview(capture) })
+                }
+            }
+            TextField(
+                value = state.input,
+                onValueChange = { state.input = it },
+                placeholder = { Text("询问", fontSize = 16.sp, color = dim) },
+                modifier = Modifier.weight(1f).heightIn(max = 160.dp),
+                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, color = text),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
+                    cursorColor = accent,
+                ),
+            )
+            val busy = state.busy
+            Box(
+                Modifier.padding(bottom = 4.dp, end = 2.dp).size(40.dp).clip(CircleShape)
+                    .background(if (busy) text else accent)
+                    .clickable { if (busy) state.stop() else state.send(null, capture) },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (busy) Icon(Icons.Filled.Stop, "停止", tint = if (palette.isDark) Color.Black else Color.White, modifier = Modifier.size(18.dp))
+                else Icon(Icons.Outlined.ArrowUpward, "发送", tint = onAccent, modifier = Modifier.size(20.dp))
+            }
         }
     }
 }

@@ -17,8 +17,10 @@ class AiSnapshot(
     val kind: Kind,
     val region: com.xnotes.core.geometry.Rect? = null,
     val source: Any? = null,
+    /** How the picture is named beside the question: "选区", "第 3 页". */
+    val label: String = kind.label,
 ) {
-    enum class Kind(val label: String) { SELECTION("选区"), VIEW("当前页面") }
+    enum class Kind(val label: String) { SELECTION("选区"), VIEW("当前页面"), PAGE("整页") }
 
     companion object {
         private const val MAX_SIDE = 2048

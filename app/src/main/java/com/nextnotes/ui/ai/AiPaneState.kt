@@ -41,6 +41,9 @@ class AiTurn(val role: Role, text: String, val snapshot: Bitmap? = null, val sna
     var placed by mutableStateOf<Int?>(null)
     /** [snapshot] as the JPEG kept on disk, once made. */
     @Volatile var kept: ByteArray? = null
+    /** When the answer was asked for, and how long the model thought before it began to answer. */
+    val startedAt = System.currentTimeMillis()
+    var thoughtMs by mutableStateOf<Long?>(null)
 }
 
 /** Handwriting being turned into text: the picture of it, what came back so far, and how it went. */
@@ -236,7 +239,7 @@ class AiPaneState(context: Context) {
         val snapshot = if (attach == Attach.AUTO) capture() else null
         preview = snapshot
 
-        val userTurn = AiTurn(Role.USER, text, snapshot?.bitmap, snapshot?.kind?.label)
+        val userTurn = AiTurn(Role.USER, text, snapshot?.bitmap, snapshot?.label)
         val answer = AiTurn(Role.ASSISTANT, "").apply { streaming = true; source = snapshot }
         // The history goes as text; only this turn carries a picture, which keeps requests small.
         val history = turns.filter { it.error == null && it.text.isNotBlank() }.map {
@@ -257,11 +260,17 @@ class AiPaneState(context: Context) {
                         scope.launch {
                             answer.text = delta.answer
                             answer.reasoning = delta.reasoning
+                            if (answer.thoughtMs == null && delta.answer.isNotEmpty() && delta.reasoning.isNotEmpty()) {
+                                answer.thoughtMs = System.currentTimeMillis() - answer.startedAt
+                            }
                         }
                     }
                 }.let { final ->
                     answer.text = final.answer
                     answer.reasoning = final.reasoning
+                    if (answer.thoughtMs == null && final.reasoning.isNotEmpty()) {
+                        answer.thoughtMs = System.currentTimeMillis() - answer.startedAt
+                    }
                     when {
                         thisCall.cancelled -> {}
                         final.answer.isBlank() && final.truncated -> answer.error =

@@ -567,7 +567,7 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
     var toolbarLook by mutableStateOf(ToolbarLook())
         private set
     /** NextNotes: outlines, shadows and the display face of the chosen look. */
-    var chrome by mutableStateOf(com.nextnotes.ui.theme.Chrome.of(com.nextnotes.ui.theme.NnTheme.STICKER, state.palette))
+    var chrome by mutableStateOf(com.nextnotes.ui.theme.Chrome.of(com.nextnotes.ui.theme.NnTheme.MIST, state.palette))
         private set
     var zoomPercent by mutableStateOf(100)
         private set
@@ -2031,6 +2031,14 @@ class Editor(context: Context, val pane: Pane = Pane.PRIMARY) : ToolPopupHost, S
             }
         }
         val view = state.visibleContentRect()
+        // The whole page in the middle of the screen, however much of it is scrolled or covered.
+        val index = state.pageIndexAtContent(view.center)
+        val page = index?.let { state.pageRects.getOrNull(it) }
+        if (index != null && page != null) {
+            renderRegionBitmap(page)?.let {
+                return com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.PAGE, page, state.document, "第 ${index + 1} 页")
+            }
+        }
         return renderRegionBitmap(view)?.let {
             com.nextnotes.ui.ai.AiSnapshot(it, com.nextnotes.ui.ai.AiSnapshot.Kind.VIEW, view, state.document)
         }

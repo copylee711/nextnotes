@@ -1610,8 +1610,7 @@ private fun EditorPane(
         if (!editor.noteOpen) com.nextnotes.sync.SyncCenter.auto(syncContext, editor.browseRoot) { editor.filesChangedOutside() }
     }
     Box(modifier) {
-      // NextNotes: the note, then the AI panel beside it. Opaque, since while the panel slides its
-      // slot is empty and would otherwise show Home underneath.
+      // NextNotes: the note, opaque so Home never shows through; the AI panel floats above it.
       Row(Modifier.fillMaxSize().background(palette.bg.toComposeColor())) {
         Column(
             modifier = Modifier
@@ -1742,16 +1741,24 @@ private fun EditorPane(
                 com.xnotes.ui.TextFormatBar(editor)
             }
         }
+      }
         // On a phone the panel covers the note, which would size the picture to a sliver: close it
         // first and place the picture once the note has its width back.
         val aiCoversNote = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 640
-        // NextNotes: the panel slides in from the edge and back out.
+        // NextNotes: the panel floats over the note, which keeps its whole width, and slides in from the
+        // edge; its handle drags it sideways off whatever it covers.
+        val aiMaxShift = with(androidx.compose.ui.platform.LocalDensity.current) {
+            (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp * 0.62f).dp.toPx()
+        }
+        var aiShift by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
         androidx.compose.animation.AnimatedVisibility(
             visible = editor.ai.open,
+            modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd)
+                .offset { androidx.compose.ui.unit.IntOffset(aiShift.toInt(), 0) },
             enter = androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(240)) { it } + androidx.compose.animation.fadeIn(),
             exit = androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(200)) { it } + androidx.compose.animation.fadeOut(),
         ) {
-        com.nextnotes.ui.ai.AiPanel(editor.ai, aiCapture, onInsertImage = { bytes ->
+        com.nextnotes.ui.ai.AiPanel(editor.ai, aiCapture, onDrag = { d -> aiShift = (aiShift + d).coerceIn(-aiMaxShift, 0f) }, onInsertImage = { bytes ->
             val insert = { if (editor.canvasOpen) editor.infinite.insertImage(bytes) else editor.insertImageAt(bytes, null) }
             if (aiCoversNote) {
                 editor.ai.open = false
@@ -1763,7 +1770,6 @@ private fun EditorPane(
             if (editor.canvasOpen) editor.infinite.addAiMarks(shot, marks) else editor.addAiMarks(shot, marks)
         })
         }
-      }
         androidx.compose.animation.AnimatedVisibility(
             visible = !editor.ai.open,
             modifier = Modifier.align(androidx.compose.ui.Alignment.TopEnd),
