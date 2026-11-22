@@ -25,6 +25,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,10 +58,17 @@ class SettingsCategory(val title: String, val icon: ImageVector, val tile: Color
 fun SettingsNav(categories: List<SettingsCategory>, anchors: SectionAnchors, scroll: ScrollState, modifier: Modifier = Modifier) {
     val palette = LocalPalette.current
     val scope = rememberCoroutineScope()
-    // The section in view: the last whose title has scrolled to (or past) the top.
+    // The section tapped, and where its scroll lands: the last sections never reach the top, so a
+    // tap on one keeps it lit there until the list is scrolled away.
+    var picked by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    // The section in view: the last whose title has scrolled to (or past) the top, or at the very
+    // end the last one.
     val current by remember(categories) {
         derivedStateOf {
+            val p = picked
+            if (p != null && (scroll.isScrollInProgress || kotlin.math.abs(scroll.value - p.second) <= 8)) return@derivedStateOf p.first
             val at = scroll.value + 24
+            if (scroll.maxValue > 0 && scroll.value >= scroll.maxValue - 4) return@derivedStateOf categories.lastOrNull()?.title
             categories.lastOrNull { (anchors.top[it.title] ?: Int.MAX_VALUE) <= at }?.title ?: categories.firstOrNull()?.title
         }
     }
@@ -72,7 +81,12 @@ fun SettingsNav(categories: List<SettingsCategory>, anchors: SectionAnchors, scr
                 Row(
                     Modifier.fillMaxWidth().height(52.dp)
                         .background(if (selected) palette.materialColors.primaryContainer.toComposeColor() else Color.Transparent)
-                        .clickable { anchors.top[c.title]?.let { y -> scope.launch { scroll.animateScrollTo(y) } } }
+                        .clickable {
+                            anchors.top[c.title]?.let { y ->
+                                picked = c.title to y.coerceAtMost(scroll.maxValue)
+                                scope.launch { scroll.animateScrollTo(y) }
+                            }
+                        }
                         .padding(start = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

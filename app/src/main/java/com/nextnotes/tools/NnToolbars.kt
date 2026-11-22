@@ -47,7 +47,32 @@ import com.xnotes.core.tools.ToolbarSection
  * away in toolbar customisation. xnotes' own defaults show everything, which overflows a side rail.
  */
 object NnToolbars {
+    // Pan heads the pen tray: with it the pen scrolls the page, since a hand that rests on the
+    // screen while writing is kept from moving it.
     val NOTE: ToolbarLayout = of(
+        listOf(HOME, TITLE, SIDEBAR),
+        listOf(PAN, PEN, HIGHLIGHTER, ERASER, -DASHED, -CALLIGRAPHY, -SPEED, -TAPER),
+        listOf(LASSO, -SELECT, -INSERT_SPACE, -SCREENSHOT),
+        listOf(COLORS),
+        listOf(UNDO, REDO),
+        listOf(TEXT, SHAPE, IMAGE, MARKUP, -TEXT_BOX, -WAND, -TAPE, -RULER),
+        listOf(PAGE_NAV, VIEW, -STYLES, -MARGINS),
+        listOf(-ZOOM, -FIT, -ZOOM_LOCK, -FULLSCREEN),
+    )
+
+    val CANVAS: ToolbarLayout = of(
+        listOf(HOME, TITLE),
+        listOf(PAN, PEN, HIGHLIGHTER, ERASER, -DASHED, -CALLIGRAPHY, -SPEED, -TAPER),
+        listOf(LASSO, -SELECT),
+        listOf(COLORS),
+        listOf(UNDO, REDO),
+        listOf(SHAPE, IMAGE, -WAND, -TAPE),
+        listOf(WAYPOINTS, MINIMAP, -STYLES),
+        listOf(-ZOOM, -FIT, -ZOOM_LOCK),
+    )
+
+    /** Our bars before pan joined the pen tray, which a stored bar left untouched still is. */
+    private val NOTE_0_7: ToolbarLayout = of(
         listOf(HOME, TITLE, SIDEBAR),
         listOf(PEN, HIGHLIGHTER, ERASER, -DASHED, -CALLIGRAPHY, -SPEED, -TAPER),
         listOf(LASSO, -SELECT, -PAN, -INSERT_SPACE, -SCREENSHOT),
@@ -58,7 +83,7 @@ object NnToolbars {
         listOf(-ZOOM, -FIT, -ZOOM_LOCK, -FULLSCREEN),
     )
 
-    val CANVAS: ToolbarLayout = of(
+    private val CANVAS_0_7: ToolbarLayout = of(
         listOf(HOME, TITLE),
         listOf(PEN, HIGHLIGHTER, ERASER, -DASHED, -CALLIGRAPHY, -SPEED, -TAPER),
         listOf(LASSO, -SELECT, -PAN),
@@ -69,10 +94,10 @@ object NnToolbars {
         listOf(-ZOOM, -FIT, -ZOOM_LOCK),
     )
 
-    /** A stored bar still on xnotes' untouched default moves to ours; one the user arranged stays. */
-    fun note(stored: ToolbarLayout): ToolbarLayout = if (stored == ToolbarLayout.DEFAULT) NOTE else stored
+    /** A stored bar still on an untouched default, xnotes' or an earlier one of ours, moves to ours; one the user arranged stays. */
+    fun note(stored: ToolbarLayout): ToolbarLayout = if (stored == ToolbarLayout.DEFAULT || stored == NOTE_0_7) NOTE else stored
 
-    fun canvas(stored: ToolbarLayout): ToolbarLayout = if (stored == ToolbarLayout.CANVAS_DEFAULT) CANVAS else stored
+    fun canvas(stored: ToolbarLayout): ToolbarLayout = if (stored == ToolbarLayout.CANVAS_DEFAULT || stored == CANVAS_0_7) CANVAS else stored
 
     /** A hidden entry, written `-ITEM`. */
     private class Hidden(val item: ToolbarItem)

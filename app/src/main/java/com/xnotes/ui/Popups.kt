@@ -1,5 +1,6 @@
 package com.xnotes.ui
 
+import com.nextnotes.ui.theme.softShadow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -1279,15 +1280,31 @@ internal fun DropdownMenu(
         modifier = modifier,
         offset = LocalMenuOffset.current,
         properties = properties,
-        // NextNotes: under the mist look a rounded card on a soft shadow, with no edge.
+        // NextNotes: under the mist look the popup itself is bare and the card is drawn inside it,
+        // with room around it, so its shadow fades out instead of being cut at the popup's edge.
         shape = if (mist) androidx.compose.foundation.shape.RoundedCornerShape(16.dp) else MaterialTheme.shapes.extraSmall,
-        containerColor = palette.menuBg.toComposeColor(),
-        shadowElevation = if (mist) 12.dp else 3.dp,
+        containerColor = if (mist) androidx.compose.ui.graphics.Color.Transparent else palette.menuBg.toComposeColor(),
+        tonalElevation = 0.dp,
+        shadowElevation = if (mist) 0.dp else 3.dp,
         border = if (mist) null else BorderStroke(1.dp, palette.border.toComposeColor()),
     ) {
         // A menu or tip opened from inside this one hangs off its own row, not beside the rail.
         com.nextnotes.ui.KeepBarsHidden() // NextNotes: a menu takes the focus, which would bring the bars back
-        CompositionLocalProvider(LocalMenuOffset provides DpOffset.Zero, LocalTipSide provides TipSide.BELOW) { content() }
+        CompositionLocalProvider(LocalMenuOffset provides DpOffset.Zero, LocalTipSide provides TipSide.BELOW) {
+            if (mist) {
+                val card = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                androidx.compose.foundation.layout.Column(
+                    Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        .softShadow(8.dp, card, palette.isDark)
+                        .clip(card)
+                        .background(palette.menuBg.toComposeColor())
+                        .border(1.dp, palette.border.toComposeColor().copy(alpha = if (palette.isDark) 1f else 0.55f), card)
+                        .padding(vertical = 6.dp),
+                ) { content() }
+            } else {
+                content()
+            }
+        }
     }
 }
 

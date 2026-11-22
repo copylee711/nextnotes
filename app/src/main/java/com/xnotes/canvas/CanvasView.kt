@@ -157,12 +157,17 @@ class CanvasView @JvmOverloads constructor(
     }
 
     @Suppress("ClickableViewAccessibility")
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (trackScrollbar(event)) return true
-        if (trackFourFingerTap(event)) return true
-        if (trackMultiFingerTap(event)) return true
-        return input?.invoke(event) ?: super.onTouchEvent(event)
+    override fun onTouchEvent(event: MotionEvent): Boolean = palmGuard.filter(event) { e -> // NextNotes: a resting hand never reaches the page
+        when {
+            trackScrollbar(e) -> true
+            trackFourFingerTap(e) -> true
+            trackMultiFingerTap(e) -> true
+            else -> input?.invoke(e) ?: super.onTouchEvent(e)
+        }
     }
+
+    /** NextNotes: drops the touches of the hand that holds the pen. */
+    val palmGuard = com.nextnotes.input.PalmGuard.forDpi(resources.displayMetrics.xdpi)
 
     // --- canvas scrollbar (View menu toggle; drawn in [onDraw], dragged like the sidebar's) ---
     // Continuous mode: a vertical bar at the right edge mapping the scroll. Paginated mode: a
@@ -355,8 +360,10 @@ class CanvasView @JvmOverloads constructor(
         return true
     }
 
-    override fun onHoverEvent(event: MotionEvent): Boolean =
-        hover?.invoke(event) ?: super.onHoverEvent(event)
+    override fun onHoverEvent(event: MotionEvent): Boolean {
+        palmGuard.hover(event) // NextNotes
+        return hover?.invoke(event) ?: super.onHoverEvent(event)
+    }
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
         genericMotion?.invoke(event)

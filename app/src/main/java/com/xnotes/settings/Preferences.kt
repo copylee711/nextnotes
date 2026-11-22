@@ -238,7 +238,8 @@ data class Preferences(
         fun fromJson(o: JSONObject?): Preferences {
             if (o == null) return Preferences()
             val appearance = o.optString("ui_appearance", "system")
-                .let { if (it == "dark" || it == "light" || it == "oled") it else "system" }
+                // NextNotes: only mist's light and dark remain; the old OLED black is its dark.
+                .let { if (it == "oled") "dark" else if (it == "dark" || it == "light") it else "system" }
             val template = o.optString("default_template", "color").let { if (it == "pdf") "pdf" else "color" }
             val zoomLockPan = o.optString("zoom_lock_pan", "single").let { if (it == "double" || it == "none") it else "single" }
             val tapActions = setOf("none", "undo", "redo", "toggle_pan", "toggle_eraser", "toggle_lasso", "toggle_previous")
@@ -294,7 +295,7 @@ data class Preferences(
                 penButtonHover = o.optBoolean("pen_button_hover", false),
                 penHoldEraser = o.optBoolean("pen_hold_eraser", true),
                 // NextNotes: a look saved before 0.6 is the old sticker default, which gives way to mist.
-                nnTheme = o.optString("nn_look", "mist"),
+                nnTheme = "mist", // NextNotes: the older looks are retired; mist is the only one
                 twoFingerTap = tapAction("two_finger_tap"),
                 threeFingerTap = tapAction("three_finger_tap"),
                 stylusDoubleTap = tapAction("stylus_double_tap"),

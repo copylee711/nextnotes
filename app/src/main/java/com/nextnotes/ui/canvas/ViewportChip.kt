@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nextnotes.ui.theme.softShadow
 import com.xnotes.R
 import com.xnotes.ui.InfiniteEditor
 import com.xnotes.ui.icons.XnotesIcons
@@ -51,10 +52,10 @@ fun ViewportChip(canvas: InfiniteEditor, modifier: Modifier = Modifier) {
     Box(modifier.padding(com.xnotes.ui.LocalToolbarCover.current).padding(12.dp)) {
         Row(
             Modifier
-                .shadow(if (mist && !palette.isDark) 4.dp else 0.dp, CircleShape)
+                .then(if (mist) Modifier.softShadow(8.dp, CircleShape, palette.isDark) else Modifier)
                 .clip(CircleShape)
                 .background((if (mist) palette.panel else palette.surface).toComposeColor())
-                .then(if (mist && !palette.isDark) Modifier else Modifier.border(1.dp, palette.border.toComposeColor(), CircleShape))
+                .border(1.dp, palette.border.toComposeColor().copy(alpha = if (mist && !palette.isDark) 0.55f else 1f), CircleShape)
                 .clickable { open = true }
                 .height(36.dp)
                 .padding(horizontal = 12.dp),

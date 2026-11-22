@@ -35,4 +35,10 @@ class NnToolbarsTest {
         val arranged = ToolbarLayout.DEFAULT.toggleVisible(2, 1)
         assertSame(arranged, NnToolbars.note(arranged))
     }
+
+    @Test fun panHeadsThePenTray() {
+        val tray = NnToolbars.NOTE.sections[1].visibleEntries.map { it.item }
+        assertEquals(listOf(ToolbarItem.PAN, ToolbarItem.PEN, ToolbarItem.HIGHLIGHTER, ToolbarItem.ERASER), tray)
+        assertEquals(ToolbarItem.PAN, NnToolbars.CANVAS.sections[1].visibleEntries.first().item)
+    }
 }

@@ -1,5 +1,6 @@
 package com.nextnotes.ui.ai
 
+import com.nextnotes.ui.theme.softShadow
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -116,17 +118,21 @@ fun AiPanel(
 
     // About a third of a tablet; nearly all of a phone.
     val screen = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat()
-    val panelWidth = if (screen < 640f) screen - 16f else (screen * 0.34f).coerceIn(360f, 440f)
+    // The width is the user's once they drag the left edge; until then a third of the screen.
+    val maxWidth = (screen * 0.7f).coerceAtLeast(MIN_PANEL)
+    val panelWidth = if (screen < 640f) screen - 16f
+    else (state.panelWidth.takeIf { it > 0f } ?: (screen * 0.34f).coerceIn(360f, 440f)).coerceIn(MIN_PANEL, maxWidth)
     val shape = RoundedCornerShape(28.dp)
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    Box(modifier.padding(12.dp)) {
     Column(
-        modifier
-            .padding(12.dp)
+        Modifier
             .width(panelWidth.dp)
             .fillMaxHeight()
-            .shadow(if (palette.isDark) 0.dp else 16.dp, shape, clip = false)
+            .then(Modifier.softShadow(10.dp, shape, palette.isDark))
             .clip(shape)
             .background(panel)
-            .border(1.dp, border.copy(alpha = if (palette.isDark) 1f else 0.6f), shape),
+            .border(1.dp, border.copy(alpha = if (palette.isDark) 1f else 0.55f), shape),
     ) {
         // The handle: dragged sideways, it carries the panel off whatever it covers.
         Box(
@@ -147,6 +153,32 @@ fun AiPanel(
         }
 
         Composer(state, capture, text, dim, panel, surface, border)
+    }
+    // The left edge's grip: dragged sideways, it makes the panel wider or narrower.
+    if (screen >= 640f) {
+        val widthNow = androidx.compose.runtime.rememberUpdatedState(panelWidth)
+        Box(
+            Modifier.align(Alignment.CenterStart).offset(x = (-10).dp).width(20.dp).height(120.dp)
+                .pointerInput(maxWidth) {
+                    var w = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = { w = widthNow.value },
+                        onDragEnd = { state.savePanelWidth() },
+                    ) { change, amount ->
+                        change.consume()
+                        w = (w - amount / density).coerceIn(MIN_PANEL, maxWidth)
+                        state.panelWidth = w
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier.width(5.dp).height(44.dp).shadow(2.dp, CircleShape).clip(CircleShape)
+                    .background(if (palette.isDark) surface else panel)
+                    .border(1.dp, dim.copy(alpha = 0.3f), CircleShape),
+            )
+        }
+    }
     }
     if (state.settingsOpen) AiSettingsDialog(state) { state.settingsOpen = false }
 }
@@ -299,11 +331,14 @@ private fun TurnView(
     if (turn.role == Role.USER) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
             turn.snapshot?.let { bmp ->
+                var zoomed by remember { mutableStateOf(false) }
                 Image(
                     bmp.asImageBitmap(), turn.snapshotLabel, contentScale = ContentScale.Crop,
                     modifier = Modifier.width(64.dp).height(82.dp).clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, border, RoundedCornerShape(12.dp)).background(Color.White),
+                        .border(1.dp, border, RoundedCornerShape(12.dp)).background(Color.White)
+                        .clickable { zoomed = true },
                 )
+                if (zoomed) ImagePreview(bmp, turn.snapshotLabel) { zoomed = false }
             }
             Text(
                 turn.text, color = text, fontSize = 15.sp, lineHeight = 22.sp,
@@ -468,8 +503,8 @@ private fun Composer(
     val shape = RoundedCornerShape(26.dp)
     Column(
         Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp, top = 6.dp)
-            .shadow(if (palette.isDark) 0.dp else 6.dp, shape, clip = false).clip(shape)
-            .background(if (palette.isDark) surface else panel).border(1.dp, border, shape)
+            .then(Modifier.softShadow(5.dp, shape, palette.isDark)).clip(shape)
+            .background(if (palette.isDark) surface else panel).border(1.dp, border.copy(alpha = if (palette.isDark) 1f else 0.5f), shape)
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -477,13 +512,16 @@ private fun Composer(
         // Once the conversation is under way, the page folds into a small tag beside the + so the
         // composer stays low and the answers keep the room.
         val folded = state.turns.isNotEmpty() && state.imageAttachment == null
+        var zoomed by remember { mutableStateOf(false) }
+        if (zoomed && preview != null) ImagePreview(preview.bitmap, preview.label) { zoomed = false }
         if (preview != null && !folded) {
             Box(Modifier.padding(start = 6.dp, top = 4.dp)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Image(
                         preview.bitmap.asImageBitmap(), preview.label, contentScale = ContentScale.Crop,
                         modifier = Modifier.width(48.dp).height(60.dp).clip(RoundedCornerShape(10.dp))
-                            .border(1.dp, border, RoundedCornerShape(10.dp)).background(Color.White),
+                            .border(1.dp, border, RoundedCornerShape(10.dp)).background(Color.White)
+                            .clickable { zoomed = true },
                     )
                     Text(preview.label, color = dim, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
                 }
@@ -526,9 +564,10 @@ private fun Composer(
                 ) {
                     Image(
                         preview.bitmap.asImageBitmap(), preview.label, contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(20.dp, 26.dp).clip(RoundedCornerShape(4.dp)).background(Color.White),
+                        modifier = Modifier.size(20.dp, 26.dp).clip(RoundedCornerShape(4.dp)).background(Color.White)
+                            .clickable { zoomed = true },
                     )
-                    Text(preview.label, color = text, fontSize = 12.sp, modifier = Modifier.padding(start = 6.dp))
+                    Text(preview.label, color = text, fontSize = 12.sp, modifier = Modifier.padding(start = 6.dp).clickable { zoomed = true })
                     Box(
                         Modifier.size(24.dp).clip(CircleShape).clickable { state.chooseNoteAttachment(Attach.NONE, capture) },
                         contentAlignment = Alignment.Center,
@@ -567,3 +606,6 @@ private fun Composer(
 
 /** The height of the composer's one-line field, which its buttons centre on. */
 private val FIELD_ROW = 56.dp
+
+/** The narrowest the panel may be dragged, in dp. */
+private const val MIN_PANEL = 320f

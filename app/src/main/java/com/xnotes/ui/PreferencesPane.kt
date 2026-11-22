@@ -249,23 +249,12 @@ fun PreferencesPane(
             verticalArrangement = Arrangement.spacedBy(if (mist) 6.dp else 14.dp),
         ) {
             SectionTitle(stringResource(R.string.pref_general))
-            // NextNotes: the look comes first; the Material colour controls below only apply to its own look.
-            SettingRow(stringResource(R.string.nn_style)) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for ((id, label) in listOf(
-                        "mist" to R.string.nn_style_mist, "sticker" to R.string.nn_style_sticker, "calm" to R.string.nn_style_calm,
-                        "cool" to R.string.nn_style_cool, "material" to R.string.nn_style_material,
-                    )) {
-                        Chip(stringResource(label), com.nextnotes.ui.theme.NnTheme.fromId(prefs.nnTheme).id == id) { update(prefs.copy(nnTheme = id)) }
-                    }
-                }
-            }
+            // NextNotes: one look, mist, in light and dark; the older looks and their colour controls are gone.
             SettingRow(stringResource(R.string.pref_ui_theme)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Chip(stringResource(R.string.theme_system), prefs.uiAppearance == "system") { update(prefs.copy(uiAppearance = "system")) }
                     Chip(stringResource(R.string.theme_dark), prefs.uiAppearance == "dark") { update(prefs.copy(uiAppearance = "dark")) }
                     Chip(stringResource(R.string.theme_light), prefs.uiAppearance == "light") { update(prefs.copy(uiAppearance = "light")) }
-                    Chip(stringResource(R.string.theme_oled), prefs.uiAppearance == "oled") { update(prefs.copy(uiAppearance = "oled")) }
                 }
             }
             val systemColours = prefs.materialMode == MaterialColourMode.SYSTEM

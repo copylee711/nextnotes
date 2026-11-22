@@ -551,10 +551,12 @@ class SettingsTest {
                 val p = Preferences(materialMode = mode, materialSingleSeed = Rgba(128, 0, 0),
                     materialDualSeed = Rgba(0, 128, 0), materialSurfaceSeed = Rgba(0, 0, 128), materialStyle = style)
                 assertEquals(p, Preferences.fromJson(p.toJson()))
-                for (appearance in listOf("light", "dark", "oled", "system")) {
+                for (appearance in listOf("light", "dark", "system")) {
                     val changed = p.copy(uiAppearance = appearance)
                     assertEquals(changed, Preferences.fromJson(changed.toJson()))
                 }
+                // NextNotes: OLED black is retired; a stored one comes back as mist's dark.
+                assertEquals(p.copy(uiAppearance = "dark"), Preferences.fromJson(p.copy(uiAppearance = "oled").toJson()))
             }
         }
     }

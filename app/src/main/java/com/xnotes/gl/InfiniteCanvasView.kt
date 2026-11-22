@@ -258,11 +258,16 @@ class InfiniteCanvasView @JvmOverloads constructor(
     }
 
     @Suppress("ClickableViewAccessibility")
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (trackFourFingerTap(event)) return true
-        if (trackMultiFingerTap(event)) return true
-        return input?.invoke(event) ?: super.onTouchEvent(event)
+    override fun onTouchEvent(event: MotionEvent): Boolean = palmGuard.filter(event) { e -> // NextNotes: a resting hand never reaches the canvas
+        when {
+            trackFourFingerTap(e) -> true
+            trackMultiFingerTap(e) -> true
+            else -> input?.invoke(e) ?: super.onTouchEvent(e)
+        }
     }
+
+    /** NextNotes: drops the touches of the hand that holds the pen. */
+    val palmGuard = com.nextnotes.input.PalmGuard.forDpi(resources.displayMetrics.xdpi)
 
     private val fingerTaps = com.xnotes.canvas.MultiFingerTap()
 
@@ -351,8 +356,10 @@ class InfiniteCanvasView @JvmOverloads constructor(
         cancel.recycle()
     }
 
-    override fun onHoverEvent(event: MotionEvent): Boolean =
-        hover?.invoke(event) ?: super.onHoverEvent(event)
+    override fun onHoverEvent(event: MotionEvent): Boolean {
+        palmGuard.hover(event) // NextNotes
+        return hover?.invoke(event) ?: super.onHoverEvent(event)
+    }
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
         genericMotion?.invoke(event)

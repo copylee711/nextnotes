@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
@@ -1480,7 +1481,7 @@ private fun audioMime(ext: String): String = when (ext.lowercase()) {
 private const val MIN_PANE_RATIO = 0.18f
 
 /** How wide the divider is to a finger. Mostly empty around the line, so it is easy to catch. */
-private val DIVIDER = 16.dp
+private val DIVIDER = 24.dp // NextNotes: wider to catch
 
 /** The accent line drawn down the middle of the divider, the same weight as a pane's focus line. */
 private val DIVIDER_LINE = 2.dp
@@ -1852,6 +1853,14 @@ private fun SplitDivider(
                     vertical = if (sideBySide) 0.dp else (DIVIDER - DIVIDER_LINE) / 2,
                 )
                 .clip(RoundedCornerShape(DIVIDER_LINE / 2))
+                .background(palette.accent.toComposeColor()),
+        )
+        // NextNotes: a grip in the middle, so the seam reads as something to drag.
+        Box(
+            Modifier
+                .size(if (sideBySide) 10.dp else 52.dp, if (sideBySide) 52.dp else 10.dp)
+                .shadow(3.dp, RoundedCornerShape(5.dp))
+                .clip(RoundedCornerShape(5.dp))
                 .background(palette.accent.toComposeColor()),
         )
     }

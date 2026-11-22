@@ -125,10 +125,19 @@ fun Modifier.stickerAt(chrome: Chrome, fill: Color, shape: Shape, press: Float):
             translate(d, d) { drawOutline(outline, color) }
         }
     } else if (chrome.elevation > 0.dp) {
-        m = m.shadow(chrome.elevation, shape, clip = false)
+        m = if (chrome.theme == NnTheme.MIST) m.softShadow(chrome.elevation * 6, shape) else m.shadow(chrome.elevation, shape, clip = false)
     }
     return m.background(fill, shape).border(chrome.outline, chrome.outlineColor, shape)
 }
+
+/**
+ * The mist look's shadow: wide and faint, a lift off the page rather than a dark rim. Dark themes
+ * show none, as a shadow on near-black only muddies the edge.
+ */
+fun Modifier.softShadow(elevation: androidx.compose.ui.unit.Dp, shape: Shape, dark: Boolean = false): Modifier =
+    if (dark) this else shadow(elevation, shape, clip = false, ambientColor = SOFT_SHADOW.copy(alpha = 0.14f), spotColor = SOFT_SHADOW.copy(alpha = 0.26f))
+
+private val SOFT_SHADOW = Color(0xFF1B2A4A)
 
 /** A [sticker] that is a button: it sinks onto its shadow while pressed. */
 @Composable

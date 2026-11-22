@@ -90,6 +90,15 @@ class AiPaneState(context: Context) {
         private set
     private var login: ChatGptLogin? = null
 
+    private val uiPrefs = app.getSharedPreferences("nextnotes_ai_ui", Context.MODE_PRIVATE)
+
+    /** The panel's width in dp as the user dragged it, or 0 for the default. */
+    var panelWidth by mutableStateOf(uiPrefs.getFloat("panel_width", 0f))
+
+    fun savePanelWidth() {
+        uiPrefs.edit().putFloat("panel_width", panelWidth).apply()
+    }
+
     /** Earlier conversations of the open note, newest first, as last listed. */
     val past = mutableStateListOf<PastSession>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)

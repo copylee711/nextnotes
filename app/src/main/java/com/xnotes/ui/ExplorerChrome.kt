@@ -1,5 +1,6 @@
 package com.xnotes.ui
 
+import com.nextnotes.ui.theme.softShadow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -118,14 +119,17 @@ private fun ChipBody(
     onClick: () -> Unit,
 ) {
     val palette = LocalPalette.current
-    val fg = (if (on) palette.selectionForeground else palette.text).toComposeColor()
-    val iconTint = (if (on) palette.selectionForeground else palette.textDim).toComposeColor()
+    // NextNotes: under the mist look a pill, filled with the accent when on, with no edge.
+    val mist = com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST
+    val fg = (if (on) (if (mist) palette.onAccent else palette.selectionForeground) else palette.text).toComposeColor()
+    val iconTint = (if (on) (if (mist) palette.onAccent else palette.selectionForeground) else palette.textDim).toComposeColor()
+    val chipShape = if (mist) androidx.compose.foundation.shape.CircleShape else MaterialTheme.shapes.small
     Row(
         modifier
-            .height(32.dp)
-            .clip(MaterialTheme.shapes.small)
-            .background(if (on) palette.selectionBackground.toComposeColor() else palette.surface.toComposeColor())
-            .border(1.dp, if (on) palette.accent.toComposeColor() else palette.border.toComposeColor(), MaterialTheme.shapes.small)
+            .height(if (mist) 34.dp else 32.dp)
+            .clip(chipShape)
+            .background(if (on) (if (mist) palette.accent else palette.selectionBackground).toComposeColor() else palette.surface.toComposeColor())
+            .then(if (mist) Modifier else Modifier.border(1.dp, if (on) palette.accent.toComposeColor() else palette.border.toComposeColor(), chipShape))
             .clickable(onClick = onClick)
             .padding(start = if (icon != null) 8.dp else 12.dp, end = if (trailing != null || !labelled) 8.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -267,7 +271,7 @@ internal fun SelectionBar(
     Row(
         // Opaque under its fill, since it stays put while files scroll beneath it, and edged so the
         // pinned bar reads as a surface rather than a tint over the ones sliding past.
-        (if (mist) Modifier.fillMaxWidth().height(52.dp).shadow(8.dp, shape).clip(shape).background(palette.panel.toComposeColor())
+        (if (mist) Modifier.fillMaxWidth().height(52.dp).then(Modifier.softShadow(8.dp, shape)).clip(shape).background(palette.panel.toComposeColor())
         else Modifier.fillMaxWidth().height(44.dp).shadow(3.dp, shape)
             .clip(shape).background(palette.bg.toComposeColor())
             .background(palette.selectionBackground.toComposeColor())
@@ -401,22 +405,30 @@ internal fun ViewOptionsContent(
             ExplorerIcon(XnotesIcons.close, stringResource(R.string.close_view_options), palette.textDim.toComposeColor(), onClick = onClose)
         }
         OptionBlock(stringResource(R.string.opt_layout)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 layouts.forEach { l ->
                     val on = l == layout
-                    val shape = MaterialTheme.shapes.medium
+                    // NextNotes: under the mist look soft filled tiles, the chosen one tinted with the accent.
+                    val mist = com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST
+                    val shape = if (mist) androidx.compose.foundation.shape.RoundedCornerShape(16.dp) else MaterialTheme.shapes.medium
                     Column(
                         Modifier
-                            .width(62.dp)
-                            .height(62.dp)
+                            .width(if (mist) 58.dp else 62.dp)
+                            .height(if (mist) 66.dp else 62.dp)
                             .clip(shape)
-                            .background(if (on) palette.selectionBackground.toComposeColor() else Color.Transparent)
-                            .border(1.dp, if (on) palette.accent.toComposeColor() else palette.border.toComposeColor(), shape)
+                            .background(
+                                if (mist) (if (on) palette.accent.toComposeColor().copy(alpha = 0.14f) else palette.surface.toComposeColor())
+                                else if (on) palette.selectionBackground.toComposeColor() else Color.Transparent,
+                            )
+                            .then(
+                                if (mist) (if (on) Modifier.border(1.5.dp, palette.accent.toComposeColor(), shape) else Modifier)
+                                else Modifier.border(1.dp, if (on) palette.accent.toComposeColor() else palette.border.toComposeColor(), shape),
+                            )
                             .clickable { onChange(view.copy(layout = l)) },
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        val tint = (if (on) palette.selectionForeground else palette.textDim).toComposeColor()
+                        val tint = (if (on) (if (mist) palette.accent else palette.selectionForeground) else palette.textDim).toComposeColor()
                         Icon(layoutIcon(l), null, tint = tint, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.height(5.dp))
                         Text(stringResource(l.labelRes), color = tint, fontSize = 11.5.sp, lineHeight = 14.sp, maxLines = 1)
@@ -519,7 +531,9 @@ internal fun ViewOptionsContent(
 @Composable
 private fun OptionBlock(label: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, color = LocalPalette.current.accent.toComposeColor(), fontSize = 13.sp)
+        // NextNotes: under the mist look a quiet caption rather than an accent one.
+        if (com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST) Text(label, color = LocalPalette.current.textDim.toComposeColor(), fontSize = 12.5.sp, fontWeight = FontWeight.Medium)
+        else Text(label, color = LocalPalette.current.accent.toComposeColor(), fontSize = 13.sp)
         content()
     }
 }
