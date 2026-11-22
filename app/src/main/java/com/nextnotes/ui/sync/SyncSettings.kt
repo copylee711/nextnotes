@@ -118,8 +118,7 @@ private fun SyncDialog(initial: SyncConfig?, onDismiss: () -> Unit) {
                 }
                 OutlinedTextField(user, { user = it }, label = { Text("用户名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(
-                    password, { password = it }, label = { Text("密码（建议用应用密码）") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    placeholder = { if (hasPassword) Text("已保存，留空不变") },
+                    password, { password = it }, label = { Text(if (hasPassword) "密码（已保存，留空不变）" else "密码（建议用应用密码）") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 )

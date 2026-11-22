@@ -85,6 +85,8 @@ object SyncCenter {
     fun forget(context: Context) {
         prefs(context).edit().clear().apply()
         KeyVault(context.applicationContext).remove(VAULT_ID)
+        // The records go too: kept, they would read a server emptied since as notes deleted there.
+        File(context.applicationContext.filesDir, "sync").deleteRecursively()
         status = null
         lastSync = 0L
     }
