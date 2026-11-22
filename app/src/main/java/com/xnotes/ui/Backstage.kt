@@ -913,17 +913,17 @@ private fun CreateButton(
                         .stickerButton(palette.accent.toComposeColor(), androidx.compose.foundation.shape.RoundedCornerShape(20.dp)) { menuOpen = true },
                     contentAlignment = Alignment.Center,
                 ) { Icon(XnotesIcons.plus, createLabel, tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(30.dp)) }
-            } else if (chrome.theme == com.nextnotes.ui.theme.NnTheme.MIST && !exporting) {
-                // NextNotes: an accent pill that says what it does.
+            } else if (chrome.theme == com.nextnotes.ui.theme.NnTheme.MIST) {
+                // NextNotes: an accent pill that says what it does, New or Export PDF with picks made.
                 val palette = LocalPalette.current
                 androidx.compose.material3.Surface(
-                    onClick = { menuOpen = true }, shape = CircleShape, color = palette.accent.toComposeColor(),
+                    onClick = { if (exporting) onExport() else menuOpen = true }, shape = CircleShape, color = palette.accent.toComposeColor(),
                     contentColor = palette.onAccent.toComposeColor(), shadowElevation = 6.dp,
                 ) {
                     Row(Modifier.height(56.dp).padding(start = 20.dp, end = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(XnotesIcons.plus, null, Modifier.size(22.dp))
+                        Icon(if (exporting) XnotesIcons.pdfFile else XnotesIcons.plus, null, Modifier.size(22.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(createLabel, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        Text(if (exporting) exportLabel else createLabel, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             } else ExtendedFloatingActionButton(
@@ -1760,8 +1760,11 @@ private fun ExplorerSection(
                             }
                         }
                     }
+                    // NextNotes: at the top of the mist home there is no breadcrumb, so no backing for one either.
+                    val crumbless = com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST &&
+                        stack.isEmpty() && !showRecent && colorFilter == null
                     Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                        Box(Modifier.height(40.dp).floatingBacking(liftNow, CircleShape, floatFill, floatEdge).liftPadding(liftNow, 14.dp), contentAlignment = Alignment.CenterStart) {
+                        if (!crumbless) Box(Modifier.height(40.dp).floatingBacking(liftNow, CircleShape, floatFill, floatEdge).liftPadding(liftNow, 14.dp), contentAlignment = Alignment.CenterStart) {
                             val filter = colorFilter
                             if (showRecent) Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(XnotesIcons.clock, null, tint = palette.accent.toComposeColor(), modifier = Modifier.size(18.dp))

@@ -260,15 +260,18 @@ internal fun SelectionBar(
     actions: @Composable () -> Unit,
 ) {
     val palette = LocalPalette.current
-    val shape = MaterialTheme.shapes.medium
-    val fg = palette.selectionForeground.toComposeColor()
+    // NextNotes: under the mist look a white floating bar, round-cornered, with no tint or edge.
+    val mist = com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST
+    val shape = if (mist) androidx.compose.foundation.shape.RoundedCornerShape(20.dp) else MaterialTheme.shapes.medium
+    val fg = (if (mist) palette.text else palette.selectionForeground).toComposeColor()
     Row(
         // Opaque under its fill, since it stays put while files scroll beneath it, and edged so the
         // pinned bar reads as a surface rather than a tint over the ones sliding past.
-        Modifier.fillMaxWidth().height(44.dp).shadow(3.dp, shape)
+        (if (mist) Modifier.fillMaxWidth().height(52.dp).shadow(8.dp, shape).clip(shape).background(palette.panel.toComposeColor())
+        else Modifier.fillMaxWidth().height(44.dp).shadow(3.dp, shape)
             .clip(shape).background(palette.bg.toComposeColor())
             .background(palette.selectionBackground.toComposeColor())
-            .border(1.dp, fg.copy(alpha = 0.25f), shape)
+            .border(1.dp, fg.copy(alpha = 0.25f), shape))
             .then(BlockPointer).padding(start = 4.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

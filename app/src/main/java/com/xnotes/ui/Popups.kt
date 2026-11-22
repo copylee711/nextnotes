@@ -1269,6 +1269,7 @@ internal fun DropdownMenu(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val palette = LocalPalette.current
+    val mist = com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST
     val opened = remember(expanded) { Eyedropper.ended }
     val ended = expanded && Eyedropper.ended != opened
     LaunchedEffect(ended) { if (ended) onDismissRequest() }
@@ -1278,8 +1279,11 @@ internal fun DropdownMenu(
         modifier = modifier,
         offset = LocalMenuOffset.current,
         properties = properties,
+        // NextNotes: under the mist look a rounded card on a soft shadow, with no edge.
+        shape = if (mist) androidx.compose.foundation.shape.RoundedCornerShape(16.dp) else MaterialTheme.shapes.extraSmall,
         containerColor = palette.menuBg.toComposeColor(),
-        border = BorderStroke(1.dp, palette.border.toComposeColor()),
+        shadowElevation = if (mist) 12.dp else 3.dp,
+        border = if (mist) null else BorderStroke(1.dp, palette.border.toComposeColor()),
     ) {
         // A menu or tip opened from inside this one hangs off its own row, not beside the rail.
         com.nextnotes.ui.KeepBarsHidden() // NextNotes: a menu takes the focus, which would bring the bars back
@@ -1305,14 +1309,16 @@ internal fun AlertDialog(
     containerColor: Color = LocalPalette.current.menuBg.toComposeColor(),
 ) {
     if (Eyedropper.target != null) return
+    // NextNotes: under the mist look, Material's own rounder dialog with no edge.
+    val mist = com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = { com.nextnotes.ui.KeepBarsHidden(); confirmButton() }, // NextNotes: see KeepBarsHidden
-        modifier = modifier.border(1.dp, LocalPalette.current.border.toComposeColor(), shape),
+        modifier = if (mist) modifier else modifier.border(1.dp, LocalPalette.current.border.toComposeColor(), shape),
         dismissButton = dismissButton,
         title = title,
         text = text,
-        shape = shape,
+        shape = if (mist) androidx.compose.foundation.shape.RoundedCornerShape(28.dp) else shape,
         containerColor = containerColor,
     )
 }

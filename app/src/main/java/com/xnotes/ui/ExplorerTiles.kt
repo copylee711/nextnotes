@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -350,6 +351,36 @@ internal fun GridFileTile(b: ExplorerBody, e: BrowseEntry) {
     val code = b.colorOf(e)?.let { codeTint(it, palette) }
     val accent = palette.accent.toComposeColor()
     val shape = MaterialTheme.shapes.medium
+    // NextNotes: under the mist look a white card holding the page, its tag and its name, as on Recent.
+    if (com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST) {
+        val card = RoundedCornerShape(20.dp)
+        Column(
+            Modifier.alpha(if (b.host.isCut(e)) 0.4f else 1f).clip(card).background(palette.panel.toComposeColor())
+                .then(if (selected) Modifier.border(2.dp, accent, card) else Modifier)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { b.host.onClick(e) }
+                .registered(b, e).padding(8.dp),
+        ) {
+            Box(
+                Modifier.fillMaxWidth().aspectRatio(if (b.view.thumb == ThumbShape.PAGE) 100f / 141f else 1f).clip(RoundedCornerShape(12.dp))
+                    .then(if (code != null) Modifier.border(3.dp, code, RoundedCornerShape(12.dp)) else Modifier),
+            ) {
+                EntryThumb(b.editor, e, b.view.thumb, Modifier.fillMaxSize())
+                if (selected) Box(Modifier.fillMaxSize().background(palette.selectionBackground.withAlpha(60).toComposeColor()))
+                MistTag(b, e, Modifier.align(Alignment.TopEnd))
+                ExportRing(e, Modifier.align(Alignment.BottomEnd).padding(6.dp))
+                if (selecting) CheckRing(selected, Modifier.align(Alignment.TopStart).padding(8.dp))
+            }
+            Row(Modifier.fillMaxWidth().padding(start = 6.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(b.label(e), color = palette.text.toComposeColor(), fontSize = 14.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val meta = b.metaText(e)
+                    if (meta.isNotEmpty()) Text(meta, color = palette.textDim.toComposeColor(), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (!selecting) EntryMenuButton(b, e, palette.textDim.toComposeColor())
+            }
+        }
+        return
+    }
     Column(
         Modifier
             .alpha(if (b.host.isCut(e)) 0.4f else 1f)
@@ -807,6 +838,24 @@ internal fun HomeShelves(
     }
 }
 
+/** NextNotes: the mist look's tag on a page, top right: how many pages, or that it is a PDF or a canvas. */
+@Composable
+private fun MistTag(b: ExplorerBody, e: BrowseEntry, modifier: Modifier) {
+    val kind = b.kind(e)
+    val pages = b.pages(e)
+    val tag = when {
+        kind == EntryKind.PDF -> "PDF"
+        kind == EntryKind.CANVAS -> stringResource(R.string.kind_canvas)
+        pages > 1 -> stringResource(R.string.nn_pages, pages)
+        else -> null
+    } ?: return
+    Text(
+        tag, color = Color.White, fontSize = 11.sp,
+        modifier = modifier.padding(8.dp).clip(RoundedCornerShape(8.dp))
+            .background(Color(0xB81C1C1E)).padding(horizontal = 8.dp, vertical = 2.dp),
+    )
+}
+
 /** One card on the Recent shelf: the page, its name, when it was opened and the folder it's in. */
 @Composable
 private fun RecentCard(b: ExplorerBody, r: RecentEntry, onOpen: (BrowseEntry) -> Unit) {
@@ -816,29 +865,21 @@ private fun RecentCard(b: ExplorerBody, r: RecentEntry, onOpen: (BrowseEntry) ->
     val code = b.colorOf(e)?.let { codeTint(it, palette) }
     // NextNotes: under the mist look, a white card holding the page and its name.
     if (com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST) {
+        val selecting = b.host.selecting()
+        val selected = b.host.isSelected(e)
         Column(
             Modifier.width(188.dp).clip(RoundedCornerShape(20.dp)).background(palette.panel.toComposeColor())
-                .clickable { onOpen(e) }.padding(8.dp),
+                .then(if (selected) Modifier.border(2.dp, palette.accent.toComposeColor(), RoundedCornerShape(20.dp)) else Modifier)
+                .combinedClickable(onClick = { onOpen(e) }, onLongClick = { b.host.onLongClick(e) }).padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Box(
                 Modifier.fillMaxWidth().height(172.dp).clip(RoundedCornerShape(12.dp))
                     .then(if (code != null) Modifier.border(3.dp, code, RoundedCornerShape(12.dp)) else Modifier),
             ) {
+                if (selecting) Box(Modifier.align(Alignment.TopStart).padding(8.dp).zIndex(1f)) { CheckRing(selected) }
                 EntryThumb(b.editor, e, ThumbShape.TOP, Modifier.fillMaxSize())
-                val kind = b.kind(e)
-                val pages = b.pages(e)
-                val tag = when {
-                    kind == EntryKind.PDF -> "PDF"
-                    kind == EntryKind.CANVAS -> stringResource(R.string.kind_canvas)
-                    pages > 1 -> stringResource(R.string.nn_pages, pages)
-                    else -> null
-                }
-                if (tag != null) Text(
-                    tag, color = Color.White, fontSize = 11.sp,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xB81C1C1E)).padding(horizontal = 8.dp, vertical = 2.dp),
-                )
+                MistTag(b, e, Modifier.align(Alignment.TopEnd))
                 ExportRing(e, Modifier.align(Alignment.BottomEnd).padding(6.dp))
             }
             Spacer(Modifier.height(6.dp))
