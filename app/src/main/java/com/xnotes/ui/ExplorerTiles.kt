@@ -730,11 +730,41 @@ internal fun HomeShelves(
     onOpenPin: (com.xnotes.settings.PinnedFolder) -> Unit,
     // NextNotes: a greeting and quick actions above the shelves.
     greeting: (@Composable () -> Unit)? = null,
+    // NextNotes: the kind shown, picked from pills beside Recent under the mist look; null for all.
+    kind: EntryKind? = null,
+    onKind: (EntryKind?) -> Unit = {},
+    kindName: (EntryKind) -> String = { it.name },
 ) {
     val palette = LocalPalette.current
+    val mist = com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST
     Column(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
         greeting?.invoke()
-        if (recents.isNotEmpty()) {
+        val shown = if (mist && kind != null) recents.filter { b.kind(it.entry) == kind } else recents
+        if (mist && recents.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.recent), color = palette.text.toComposeColor(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(16.dp))
+                (listOf<EntryKind?>(null) + listOf(EntryKind.NOTE, EntryKind.CANVAS, EntryKind.PDF)).forEach { k ->
+                    val on = k == kind
+                    Text(
+                        k?.let(kindName) ?: stringResource(R.string.nn_all),
+                        color = (if (on) palette.panel else palette.text).toComposeColor(), fontSize = 13.sp,
+                        modifier = Modifier.padding(end = 8.dp).clip(CircleShape)
+                            .background((if (on) palette.text else palette.panel).toComposeColor())
+                            .clickable { onKind(k) }.padding(horizontal = 14.dp, vertical = 6.dp),
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.see_all), color = palette.accent.toComposeColor(), fontSize = 14.sp,
+                    modifier = Modifier.clip(MaterialTheme.shapes.extraSmall).clickable(onClick = onSeeAll).padding(horizontal = 6.dp, vertical = 4.dp),
+                )
+            }
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(shown.take(8).size) { i -> RecentCard(b, shown[i], onOpenRecent) }
+            }
+            Spacer(Modifier.height(24.dp))
+        } else if (recents.isNotEmpty()) {
             ShelfTitle(stringResource(R.string.recent), stringResource(R.string.see_all), onSeeAll)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 items(recents.take(8).size) { i -> RecentCard(b, recents[i], onOpenRecent) }
@@ -768,6 +798,9 @@ internal fun HomeShelves(
             Spacer(Modifier.height(20.dp))
         }
         Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            // NextNotes: the mist home calls the top folder's items all notes, as a heading like Recent's.
+            if (mist) Text(stringResource(R.string.nn_all_notes), color = palette.text.toComposeColor(), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            else
             Text(stringResource(R.string.in_folder, rootName), color = palette.text.toComposeColor(), fontSize = 16.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
             Text(counts, color = palette.textDim.toComposeColor(), fontSize = 12.5.sp)
         }
@@ -793,7 +826,20 @@ private fun RecentCard(b: ExplorerBody, r: RecentEntry, onOpen: (BrowseEntry) ->
                     .then(if (code != null) Modifier.border(3.dp, code, RoundedCornerShape(12.dp)) else Modifier),
             ) {
                 EntryThumb(b.editor, e, ThumbShape.TOP, Modifier.fillMaxSize())
-                ThumbBadges(b, e, 6.dp)
+                val kind = b.kind(e)
+                val pages = b.pages(e)
+                val tag = when {
+                    kind == EntryKind.PDF -> "PDF"
+                    kind == EntryKind.CANVAS -> stringResource(R.string.kind_canvas)
+                    pages > 1 -> stringResource(R.string.nn_pages, pages)
+                    else -> null
+                }
+                if (tag != null) Text(
+                    tag, color = Color.White, fontSize = 11.sp,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xB81C1C1E)).padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+                ExportRing(e, Modifier.align(Alignment.BottomEnd).padding(6.dp))
             }
             Spacer(Modifier.height(6.dp))
             Text(b.label(e), color = palette.text.toComposeColor(), fontSize = 14.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 4.dp))

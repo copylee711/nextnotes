@@ -449,11 +449,22 @@ private class SidebarNav(
 @Composable
 private fun BackstageSidebar(modifier: Modifier, nav: SidebarNav, onCollapse: () -> Unit) {
     val palette = LocalPalette.current
-    Column(modifier.fillMaxHeight().background(palette.panel.toComposeColor()).padding(vertical = 12.dp)) {
+    // NextNotes: under the mist look the sidebar sits on the desk, its rows set in as pills.
+    val mist = com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST
+    Column(modifier.fillMaxHeight().background((if (mist) palette.bg else palette.panel).toComposeColor()).padding(vertical = 12.dp)) {
         Row(
             Modifier.fillMaxWidth().padding(start = 18.dp, end = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (mist) {
+                Box(
+                    Modifier.size(32.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                        .background((if (palette.isDark) palette.accent else palette.text).toComposeColor()),
+                    contentAlignment = Alignment.Center,
+                ) { Text("N", color = (if (palette.isDark) palette.onAccent else palette.panel).toComposeColor(), fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                Spacer(Modifier.width(10.dp))
+                Text("NextNotes", color = palette.text.toComposeColor(), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            } else
             Text("NextNotes", color = palette.text.toComposeColor(), fontSize = 22.sp, fontFamily = com.nextnotes.ui.theme.LocalChrome.current.display)
             Spacer(Modifier.weight(1f))
             Tooltip(stringResource(R.string.collapse_sidebar)) {
@@ -494,6 +505,7 @@ private fun BackstageSidebar(modifier: Modifier, nav: SidebarNav, onCollapse: ()
         }
         Command(XnotesIcons.sliders, stringResource(R.string.preferences), selected = nav.view == BackstageView.PREFERENCES) { nav.onSelectView(BackstageView.PREFERENCES) }
         Command(XnotesIcons.info, stringResource(R.string.about), selected = nav.view == BackstageView.ABOUT) { nav.onSelectView(BackstageView.ABOUT) }
+        if (mist) com.nextnotes.ui.sync.SyncBadge(Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp))
     }
 }
 
@@ -599,6 +611,26 @@ private fun Command(icon: ImageVector, label: String, selected: Boolean = false,
     // NextNotes: under a hard-shadow look the picked row is a sun-yellow sticker set in from the edges.
     val stuck = chrome.isSticker && selected
     val pill = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)
+    if (chrome.theme == com.nextnotes.ui.theme.NnTheme.MIST) {
+        // NextNotes: a pill set in from the edges, white when picked, with a dot in the accent.
+        Row(
+            Modifier.fillMaxWidth().height(44.dp).padding(horizontal = 12.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                .background(if (selected) palette.panel.toComposeColor() else Color.Transparent)
+                .clickable(onClick = onClick).padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(if (selected) palette.accent.toComposeColor() else Color.Transparent))
+            Spacer(Modifier.width(12.dp))
+            Icon(icon, contentDescription = label, tint = (if (selected) palette.text else palette.textDim).toComposeColor(), modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                label, color = palette.text.toComposeColor(), fontSize = 15.sp,
+                fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal, modifier = Modifier.weight(1f),
+            )
+            if (count != null) Text(count, color = palette.textDim.toComposeColor(), fontSize = 13.sp)
+        }
+        return
+    }
     Row(
         Modifier
             .fillMaxWidth()
@@ -1426,6 +1458,9 @@ private fun ExplorerSection(
     val floatEdge = palette.border.toComposeColor()
     // The chip row is the files' first row, so it scrolls away with them; under the pinned selection bar it stays empty.
     val chipRow: @Composable (Dp) -> Unit = { height ->
+        // NextNotes: the mist home keeps no chip row; sort and grouping are in View options, the kinds beside Recent.
+        val mistHome = com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST && stack.isEmpty() && !showRecent && colorFilter == null && query.isBlank()
+        if (mistHome && selection.isEmpty()) Spacer(Modifier.height(4.dp)) else
         Box(Modifier.fillMaxWidth().height(height).padding(top = 8.dp)) {
             if (selection.isEmpty()) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1631,6 +1666,9 @@ private fun ExplorerSection(
                     onSeeAll = { showRecent = true; selection.clear() },
                     onOpenRecent = { host.onClick(it) },
                     onOpenPin = { openChain(it.uri) },
+                    kind = kindFilter,
+                    onKind = { kindFilter = it },
+                    kindName = { words.kinds(it) },
                     greeting = if (com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MATERIAL) null else ({
                         val last = recents.orEmpty().firstOrNull()?.entry
                         com.nextnotes.ui.home.HomeGreeting(
@@ -1744,6 +1782,8 @@ private fun ExplorerSection(
                                 Spacer(Modifier.width(6.dp))
                                 Text(stringResource(R.string.in_every_folder), color = palette.textDim.toComposeColor(), fontSize = 14.sp, maxLines = 1)
                                 ExplorerIcon(XnotesIcons.close, stringResource(R.string.clear_colour_filter), palette.textDim.toComposeColor()) { colorFilter = null; selection.clear() }
+                            } else if (com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST && stack.isEmpty()) {
+                                // NextNotes: at the top of the mist home the greeting below names the place.
                             } else Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     XnotesIcons.home, stringResource(R.string.top_folder),
@@ -1764,7 +1804,7 @@ private fun ExplorerSection(
                     }
                     Spacer(Modifier.width(8.dp))
                     ExplorerSearchField(query, { query = it }, expandedWidth = if (wide) 320.dp else (headerWidth - 144.dp).coerceAtLeast(160.dp), lift = liftNow)
-                    if (wide && switcherLayouts.size > 1) {
+                    if (wide && switcherLayouts.size > 1 && !(com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST)) {
                         Spacer(Modifier.width(8.dp))
                         LayoutSwitcher(switcherLayouts, layout, liftNow) { setView(view.copy(layout = it)); columnsPick = null }
                     }

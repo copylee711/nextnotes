@@ -24,4 +24,7 @@
     <string name="nn_new_canvas_hint">无限大的白板</string>
     <string name="nn_import_pdf_hint">在讲义上批注</string>
     <string name="nn_sync_title">多设备同步</string>
+    <string name="nn_all_notes">全部笔记</string>
+    <string name="nn_pages">%d 页</string>
+    <string name="nn_all">全部</string>
 </resources>

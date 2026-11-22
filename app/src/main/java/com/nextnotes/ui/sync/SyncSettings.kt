@@ -1,6 +1,12 @@
 package com.nextnotes.ui.sync
 
+import androidx.compose.material.icons.outlined.CloudDone
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -151,4 +157,37 @@ private fun SyncDialog(initial: SyncConfig?, onDismiss: () -> Unit) {
             }
         },
     )
+}
+
+/**
+ * Where syncing stands, for the foot of the home sidebar: a cloud and a few words, or nothing
+ * while sync is not set up.
+ */
+@Composable
+fun SyncBadge(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val palette = LocalPalette.current
+    remember { SyncCenter.load(context) }
+    if (remember(SyncCenter.status, SyncCenter.running) { SyncCenter.config(context) } == null) return
+    val status = SyncCenter.status
+    val failed = status?.startsWith("同步失败") == true
+    val line = when {
+        SyncCenter.running -> "正在同步…"
+        failed -> "同步失败"
+        SyncCenter.lastSync > 0 -> "已同步 · ${ago(SyncCenter.lastSync)}"
+        else -> "还没有同步过"
+    }
+    Row(
+        modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+            .background(palette.panel.toComposeColor()).padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        androidx.compose.material3.Icon(
+            if (failed) androidx.compose.material.icons.Icons.Outlined.CloudOff else androidx.compose.material.icons.Icons.Outlined.CloudDone,
+            null, tint = if (failed) palette.danger.toComposeColor() else Color(if (palette.isDark) 0xFFC8F169 else 0xFF1F9D55),
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.size(10.dp))
+        Text(line, color = palette.text.toComposeColor(), fontSize = 13.sp, maxLines = 1)
+    }
 }
