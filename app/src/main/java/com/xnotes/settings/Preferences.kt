@@ -47,7 +47,7 @@ data class Preferences(
     /** NextNotes: holding the pen tip still on the screen switches that contact to the eraser. */
     val penHoldEraser: Boolean = true,
     /** NextNotes: the look, a [com.nextnotes.ui.theme.NnTheme] id. */
-    val nnTheme: String = "sticker",
+    val nnTheme: String = "mist",
     /** Action mapped to a clean two-finger tap; "none" (default) disables it. */
     val twoFingerTap: String = "none",
     /** Action mapped to a clean three-finger tap; "none" (default) disables it. */
@@ -150,6 +150,7 @@ data class Preferences(
         .put("pen_button_hover", penButtonHover)
         .put("pen_hold_eraser", penHoldEraser)
         .put("nn_theme", nnTheme)
+        .put("nn_look", nnTheme) // NextNotes: a look picked since mist became the default
         .put("two_finger_tap", twoFingerTap)
         .put("three_finger_tap", threeFingerTap)
         .put("stylus_double_tap", stylusDoubleTap)
@@ -292,7 +293,8 @@ data class Preferences(
                 penButtonTool = o.optString("pen_button_tool", "eraser").ifEmpty { "eraser" },
                 penButtonHover = o.optBoolean("pen_button_hover", false),
                 penHoldEraser = o.optBoolean("pen_hold_eraser", true),
-                nnTheme = o.optString("nn_theme", "sticker"),
+                // NextNotes: a look saved before 0.6 is the old sticker default, which gives way to mist.
+                nnTheme = o.optString("nn_look", "mist"),
                 twoFingerTap = tapAction("two_finger_tap"),
                 threeFingerTap = tapAction("three_finger_tap"),
                 stylusDoubleTap = tapAction("stylus_double_tap"),

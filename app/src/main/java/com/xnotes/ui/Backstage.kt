@@ -881,6 +881,19 @@ private fun CreateButton(
                         .stickerButton(palette.accent.toComposeColor(), androidx.compose.foundation.shape.RoundedCornerShape(20.dp)) { menuOpen = true },
                     contentAlignment = Alignment.Center,
                 ) { Icon(XnotesIcons.plus, createLabel, tint = palette.onAccent.toComposeColor(), modifier = Modifier.size(30.dp)) }
+            } else if (chrome.theme == com.nextnotes.ui.theme.NnTheme.MIST && !exporting) {
+                // NextNotes: an accent pill that says what it does.
+                val palette = LocalPalette.current
+                androidx.compose.material3.Surface(
+                    onClick = { menuOpen = true }, shape = CircleShape, color = palette.accent.toComposeColor(),
+                    contentColor = palette.onAccent.toComposeColor(), shadowElevation = 6.dp,
+                ) {
+                    Row(Modifier.height(56.dp).padding(start = 20.dp, end = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(XnotesIcons.plus, null, Modifier.size(22.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(createLabel, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
             } else ExtendedFloatingActionButton(
                 text = { Text(exportLabel) },
                 icon = {

@@ -781,6 +781,26 @@ private fun RecentCard(b: ExplorerBody, r: RecentEntry, onOpen: (BrowseEntry) ->
     val e = r.entry
     val shape = MaterialTheme.shapes.medium
     val code = b.colorOf(e)?.let { codeTint(it, palette) }
+    // NextNotes: under the mist look, a white card holding the page and its name.
+    if (com.nextnotes.ui.theme.LocalChrome.current.theme == com.nextnotes.ui.theme.NnTheme.MIST) {
+        Column(
+            Modifier.width(188.dp).clip(RoundedCornerShape(20.dp)).background(palette.panel.toComposeColor())
+                .clickable { onOpen(e) }.padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Box(
+                Modifier.fillMaxWidth().height(172.dp).clip(RoundedCornerShape(12.dp))
+                    .then(if (code != null) Modifier.border(3.dp, code, RoundedCornerShape(12.dp)) else Modifier),
+            ) {
+                EntryThumb(b.editor, e, ThumbShape.TOP, Modifier.fillMaxSize())
+                ThumbBadges(b, e, 6.dp)
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(b.label(e), color = palette.text.toComposeColor(), fontSize = 14.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 4.dp))
+            Text(openedLabel(b.words, r.opened, b.now, b.zone), color = palette.textDim.toComposeColor(), fontSize = 12.sp, maxLines = 1, modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp))
+        }
+        return
+    }
     Column(
         Modifier.width(168.dp).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onOpen(e) },
         verticalArrangement = Arrangement.spacedBy(3.dp),

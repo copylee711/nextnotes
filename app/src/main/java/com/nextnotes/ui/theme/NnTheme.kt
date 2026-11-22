@@ -34,19 +34,21 @@ import com.xnotes.ui.theme.MaterialColors
 import com.xnotes.ui.theme.Palette
 
 /**
- * NextNotes' looks. [STICKER] is the default: thick ink outlines, hard offset shadows and the pink
- * and violet of the N icon. [CALM] keeps those colours with thin lines and soft shadows. [COOL] is
+ * NextNotes' looks. [MIST] is the default: white cards on a pale grey desk with one blue accent,
+ * after the system notes and settings apps, and graphite with a lime accent in the dark.
+ * [STICKER] has thick ink outlines and hard offset shadows. [CALM] keeps those colours with thin lines and soft shadows. [COOL] is
  * a quiet slate-and-indigo look with hairlines. [MATERIAL] is xnotes' own seeded Material scheme,
  * with every colour control it had.
  */
 enum class NnTheme(val id: String) {
+    MIST("mist"),
     STICKER("sticker"),
     CALM("calm"),
     COOL("cool"),
     MATERIAL("material");
 
     companion object {
-        fun fromId(id: String?): NnTheme = entries.firstOrNull { it.id == id } ?: STICKER
+        fun fromId(id: String?): NnTheme = entries.firstOrNull { it.id == id } ?: MIST
     }
 }
 
@@ -70,6 +72,10 @@ data class Chrome(
         val displayFont = FontFamily(Font(R.font.nn_display))
 
         fun of(theme: NnTheme, palette: Palette): Chrome = when (theme) {
+            // No outlines: cards stand off the desk by their colour and a whisper of shadow.
+            NnTheme.MIST -> Chrome(
+                theme, 0.dp, palette.border.toColor(), 0.dp, if (palette.isDark) 0.dp else 1.dp, FontFamily.Default,
+            )
             NnTheme.STICKER -> Chrome(
                 theme, 2.dp, NnColors.ink(palette.isDark).toColor(), 3.dp, 0.dp, displayFont,
             )
@@ -159,6 +165,7 @@ object NnColors {
 
     fun palette(theme: NnTheme, dark: Boolean): Palette {
         val t = when (theme) {
+            NnTheme.MIST -> mist(dark)
             NnTheme.CALM -> calm(dark)
             NnTheme.COOL -> cool(dark)
             else -> sticker(dark)
@@ -181,7 +188,8 @@ object NnColors {
             onSurface = t.text,
             surfaceVariant = t.surface,
             onSurfaceVariant = t.textDim,
-            outline = t.border,
+            // Mist's hairlines are faint; what outlines a control (a switch turned off) needs more.
+            outline = if (theme == NnTheme.MIST) rgb(if (dark) 0x6E7686 else 0x8A8F98) else t.border,
             outlineVariant = t.border,
             surfaceDim = t.surface,
             surfaceBright = t.panel,
@@ -229,6 +237,18 @@ object NnColors {
         border = rgb(0x3A3A3C), text = rgb(0xF2F2F2), textDim = rgb(0xA0A0A5),
         surface = rgb(0x2E2E30), surfaceHi = rgb(0x3A3A3C),
         primaryTint = rgb(0x4A3A1A), second = sky, secondTint = rgb(0x1E3050), sunTint = rgb(0x4A2A26),
+    )
+
+    private fun mist(dark: Boolean) = if (!dark) Tones(
+        bg = rgb(0xF2F3F5), panel = rgb(0xFFFFFF), paper = rgb(0xFFFFFF), accent = rgb(0x1F5FD6),
+        border = rgb(0xE2E4E8), text = rgb(0x1C1C1E), textDim = rgb(0x6B6F76),
+        surface = rgb(0xEEEFF2), surfaceHi = rgb(0xE6E8EC),
+        primaryTint = rgb(0xE3ECFE), second = rgb(0x1F9D55), secondTint = rgb(0xDFF5E8), sunTint = rgb(0xFDEFD9),
+    ) else Tones(
+        bg = rgb(0x0F1115), panel = rgb(0x1B1F26), paper = rgb(0x171A20), accent = rgb(0xC8F169),
+        border = rgb(0x2A303A), text = rgb(0xECEEF2), textDim = rgb(0xA3AAB6),
+        surface = rgb(0x232831), surfaceHi = rgb(0x2C323C),
+        primaryTint = rgb(0x2C3620), second = rgb(0x7CC4FF), secondTint = rgb(0x1C2E40), sunTint = rgb(0x3A2C1A),
     )
 
     private fun calm(dark: Boolean) = if (!dark) Tones(

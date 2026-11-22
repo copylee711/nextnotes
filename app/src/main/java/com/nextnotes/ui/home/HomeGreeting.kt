@@ -1,5 +1,6 @@
 package com.nextnotes.ui.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -63,16 +64,24 @@ fun HomeGreeting(
         },
     )
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)) }
+    val mist = chrome.theme == com.nextnotes.ui.theme.NnTheme.MIST
     Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 20.dp)) {
-        Text(greeting, color = palette.text.toComposeColor(), fontSize = 30.sp, fontFamily = chrome.display)
-        Spacer(Modifier.height(2.dp))
-        Text(today, color = palette.textDim.toComposeColor(), fontSize = 14.sp)
+        if (mist) {
+            // The date over a bold title, as the system apps head a page.
+            Text(today, color = palette.textDim.toComposeColor(), fontSize = 14.sp)
+            Text(greeting, color = palette.text.toComposeColor(), fontSize = 32.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+        } else {
+            Text(greeting, color = palette.text.toComposeColor(), fontSize = 30.sp, fontFamily = chrome.display)
+            Spacer(Modifier.height(2.dp))
+            Text(today, color = palette.textDim.toComposeColor(), fontSize = 14.sp)
+        }
         Spacer(Modifier.height(16.dp))
+        val tiles = mistTiles(palette.isDark)
         val cards = buildList {
-            if (last != null) add(Card(XnotesIcons.clock, stringResource(R.string.nn_continue_last), last.name, scheme.primaryContainer, last.open))
-            add(Card(XnotesIcons.edit, stringResource(R.string.new_note_menu), stringResource(R.string.nn_new_note_hint), mint, onNewNote))
-            add(Card(XnotesIcons.canvas, stringResource(R.string.new_canvas_menu), stringResource(R.string.nn_new_canvas_hint), scheme.secondaryContainer, onNewCanvas))
-            add(Card(XnotesIcons.importDoc, stringResource(R.string.import_pdf), stringResource(R.string.nn_import_pdf_hint), scheme.tertiaryContainer, onImportPdf))
+            if (last != null) add(Card(XnotesIcons.clock, stringResource(R.string.nn_continue_last), last.name, scheme.primaryContainer, last.open, tiles[0]))
+            add(Card(XnotesIcons.edit, stringResource(R.string.new_note_menu), stringResource(R.string.nn_new_note_hint), mint, onNewNote, tiles[1]))
+            add(Card(XnotesIcons.canvas, stringResource(R.string.new_canvas_menu), stringResource(R.string.nn_new_canvas_hint), scheme.secondaryContainer, onNewCanvas, tiles[2]))
+            add(Card(XnotesIcons.importDoc, stringResource(R.string.import_pdf), stringResource(R.string.nn_import_pdf_hint), scheme.tertiaryContainer, onImportPdf, tiles[3]))
         }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             // Four across on a tablet, two by two on a phone.
@@ -89,13 +98,43 @@ fun HomeGreeting(
     }
 }
 
-private class Card(val icon: ImageVector, val title: String, val detail: String, val fill: Color, val onClick: () -> Unit)
+private class Card(
+    val icon: ImageVector, val title: String, val detail: String, val fill: Color, val onClick: () -> Unit,
+    /** The mist look's icon tile: its fill, then the icon's colour. */
+    val tile: Pair<Color, Color>,
+)
+
+/** Blue, green, orange and red tiles in the light; lime, sky, orange and pink glows in the dark. */
+private fun mistTiles(dark: Boolean): List<Pair<Color, Color>> = if (!dark) listOf(
+    Color(0xFFE3ECFE) to Color(0xFF1F5FD6), Color(0xFFDFF5E8) to Color(0xFF16794A),
+    Color(0xFFFDEFD9) to Color(0xFF9A5400), Color(0xFFFDE4E1) to Color(0xFFB3261E),
+) else listOf(
+    Color(0x24C8F169) to Color(0xFFC8F169), Color(0x247CC4FF) to Color(0xFF7CC4FF),
+    Color(0x24FFB86B) to Color(0xFFFFB86B), Color(0x24FF8FA3) to Color(0xFFFF8FA3),
+)
 
 @Composable
 private fun QuickCard(card: Card, modifier: Modifier) {
     val palette = LocalPalette.current
     val chrome = LocalChrome.current
     val shape = RoundedCornerShape(18.dp)
+    if (chrome.theme == com.nextnotes.ui.theme.NnTheme.MIST) {
+        // A white card; the colour lives in the icon's tile.
+        Row(
+            modifier.height(88.dp).stickerButton(palette.panel.toComposeColor(), RoundedCornerShape(20.dp), onClick = card.onClick).padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(46.dp).background(card.tile.first, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                Icon(card.icon, null, tint = card.tile.second, modifier = Modifier.size(24.dp))
+            }
+            Spacer(Modifier.size(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(card.title, color = palette.text.toComposeColor(), fontSize = 16.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 1)
+                Text(card.detail, color = palette.textDim.toComposeColor(), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        return
+    }
     Box(modifier.padding(end = chrome.drop, bottom = chrome.drop)) {
         Row(
             Modifier.fillMaxWidth().height(76.dp).stickerButton(card.fill, shape, onClick = card.onClick).padding(horizontal = 16.dp),

@@ -9,6 +9,7 @@
     <string name="nn_enjoying">喜欢 NextNotes？</string>
     <string name="nn_based_on_xnotes">基于 xnotes</string>
     <string name="nn_style">界面风格</string>
+    <string name="nn_style_mist">雾白</string>
     <string name="nn_style_sticker">卡通</string>
     <string name="nn_style_calm">克制</string>
     <string name="nn_style_cool">冷调</string>
@@ -22,4 +23,5 @@
     <string name="nn_new_note_hint">一页页写下来</string>
     <string name="nn_new_canvas_hint">无限大的白板</string>
     <string name="nn_import_pdf_hint">在讲义上批注</string>
+    <string name="nn_sync_title">多设备同步</string>
 </resources>
